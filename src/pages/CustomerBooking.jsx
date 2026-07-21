@@ -8,7 +8,7 @@ import { Store, Clock, Monitor, Stethoscope, Scissors } from 'lucide-react';
 
 import GlobalSidebar from '../components/GlobalSidebar';
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'https://qzkip-backend.onrender.com/api';
 const QUEUE_URL = `${API_BASE}/queue`;
 
 

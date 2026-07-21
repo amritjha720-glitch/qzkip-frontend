@@ -7,7 +7,7 @@ import CustomPopup from '../components/CustomPopup';
 import { Users, UserX, QrCode, Plus, LogOut, Power, CheckCircle, Clock } from 'lucide-react';
 import SmartLogo from '../components/SmartLogo';
 
-const BACKEND_BASE = 'http://localhost:5000';
+const BACKEND_BASE = 'https://qzkip-backend.onrender.com';
 const QUEUE_URL = `${BACKEND_BASE}/api/queue`;
 
 const Dashboard = () => {
@@ -73,7 +73,7 @@ const Dashboard = () => {
     }
 
     fetchQueue();
-    const socket = io('http://localhost:5000'); 
+    const socket = io('https://qzkip-backend.onrender.com'); 
     
     socket.onAny((eventName, data) => {
       if (data && data.message === 'A new token has arrived!') {

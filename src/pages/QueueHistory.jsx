@@ -5,7 +5,7 @@ import CustomPopup from '../components/CustomPopup';
 import GlobalSidebar from '../components/GlobalSidebar';
 import SmartLogo from '../components/SmartLogo';
 
-const QUEUE_URL = 'http://localhost:5000/api/queue';
+const QUEUE_URL = 'https://qzkip-backend.onrender.com/api/queue';
 
 
 

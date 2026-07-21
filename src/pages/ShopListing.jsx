@@ -9,7 +9,7 @@ import CustomPopup from '../components/CustomPopup';
 import GlobalSidebar from '../components/GlobalSidebar';
 import SmartLogo from '../components/SmartLogo';
 
-const QUEUE_URL = 'http://10.191.172.73:5000/api/queue';
+const QUEUE_URL = 'http://https://qzkip-backend.onrender.com/api/queue';
 
 const ShopListing = () => {
   const navigate = useNavigate();
@@ -28,7 +28,7 @@ const ShopListing = () => {
     };
 
     fetchShops();
-    const socket = io('http://localhost:5000');
+    const socket = io('https://qzkip-backend.onrender.com');
     socket.onAny(() => fetchShops());
     return () => socket.disconnect();
   }, []);

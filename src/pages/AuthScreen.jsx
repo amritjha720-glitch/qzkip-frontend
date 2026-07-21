@@ -6,7 +6,7 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/auth'; 
+const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
 const AuthScreen = () => {
   const navigate = useNavigate();

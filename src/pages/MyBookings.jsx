@@ -6,7 +6,7 @@ import CustomPopup from '../components/CustomPopup';
 import GlobalSidebar from '../components/GlobalSidebar';
 import SmartLogo from '../components/SmartLogo';
 
-const QUEUE_URL = 'http://localhost:5000/api/queue';
+const QUEUE_URL = 'https://qzkip-backend.onrender.com/api/queue';
 
 
 
@@ -72,7 +72,7 @@ const MyBookings = () => {
     }
 
     fetchBookings();
-    const socket = io('http://localhost:5000');
+    const socket = io('https://qzkip-backend.onrender.com');
     socket.onAny(() => fetchBookings());
     const interval = setInterval(() => setTimerTrigger(prev => prev + 1), 1000);
 

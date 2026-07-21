@@ -7,7 +7,7 @@ import CustomPopup from '../components/CustomPopup';
 import { Clock, Users, Ticket, XCircle } from 'lucide-react';
 import SmartLogo from '../components/SmartLogo';
 
-const BACKEND_BASE = 'http://localhost:5000';
+const BACKEND_BASE = 'https://qzkip-backend.onrender.com';
 const QUEUE_URL = `${BACKEND_BASE}/api/queue`;
 
 
