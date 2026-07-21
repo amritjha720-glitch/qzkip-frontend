@@ -1,0 +1,290 @@
+/* Base Setup */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; 
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  /* Warm off-white background */
+  background-color: #F8F7F3; 
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: #1a1a2e;
+}
+
+/* Hide scrollbar for webkit browsers to keep filter list clean */
+::-webkit-scrollbar {
+  display: none;
+}
+
+.shop-grid {
+  display: grid;
+  grid-template-columns: 1fr; /* Single column for mobile */
+  gap: 16px;
+}
+
+/* Grid automatically adjusts to multiple columns for tablet and desktop views */
+@media (min-width: 768px) {
+  .shop-grid {
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 24px;
+  }
+}
+
+.container {
+  width: 100%;
+  max-width: 480px; 
+  margin: 0 auto;
+  padding: 20px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.container h2 {
+  color: white;
+}
+
+/* Header Stability */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 50px; 
+  margin-bottom: 20px;
+}
+
+.header h1 {
+  color: black;
+}
+
+/* Main serving card (stable height) */
+.card-dark {
+  background: #1a1a2e;
+  color: white;
+  padding: 24px;
+  border-radius: 24px;
+  min-height: 220px; 
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 10px 30px rgba(26, 26, 46, 0.2);
+}
+
+.label { 
+  font-size: 12px; 
+  color: rgb(0, 0, 0);
+  text-transform: uppercase; 
+  letter-spacing: 1px; 
+  opacity: 0.7; 
+}
+
+.token-display {
+  font-size: 36px;
+  color: white;
+  font-weight: 800;
+  margin: 10px 0;
+  height: 44px; 
+}
+
+.customer-name-box {
+  height: 20px; 
+  font-size: 16px;
+  opacity: 0.9;
+  margin-bottom: 20px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Waiting list items */
+.list-container {
+  margin-top: 25px;
+  flex-grow: 1;
+}
+
+.list-container h2 {
+  color: black;
+}
+
+.card-outline {
+  background: white;
+  border: 1px solid #eef0f2;
+  padding: 16px;
+  border-radius: 16px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 80px; 
+}
+
+.card-outline h2 {
+  color: black;
+}
+
+/* Global button styling */
+.btn-light {
+  background: #ffffff;
+  color: #1a1a2e;
+  border: none;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 700;
+  font-size: 16px;
+  width: 100%;
+  cursor: pointer;
+  transition: transform 0.1s active;
+}
+
+.btn-light:active { transform: scale(0.98); }
+.btn-light:disabled { opacity: 0.7; cursor: not-allowed; }
+
+.status-tag {
+  background: #f1f3f5;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6c757d;
+}
+
+/* Circular Menu Icon Button */
+.menu-icon-btn {
+  background: transparent;
+  border: none;
+  color: #ffffff; 
+  font-size: 24px;
+  cursor: pointer;
+  width: 44px; 
+  height: 44px;
+  border-radius: 50%; 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s ease;
+}
+
+.menu-icon-btn:hover {
+  background-color: rgba(255, 255, 255, 0.15); 
+}
+
+/* Emotional Footer (Light Area) */
+.bottom-footer {
+  text-align: center;
+  padding: 30px 20px 30px; 
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.footer-quote {
+  color: #9E9E9E; 
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.6;
+  font-style: italic; 
+}
+
+.footer-made-with {
+  color: #94A3B8;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin-top: 5px;
+}
+
+/* 🚀 Clean Dark Blue Footer */
+/* 🚀 Clean Dark Blue Footer (Fixed White Line Gaps) */
+/* 🚀 Clean Dark Blue Footer (Padding Bug Fixed!) */
+.fat-footer-dark {
+  background-color: #0A192F; 
+  color: #8892B0; 
+  
+  /* 👇 MAGIC FIX: Footer ko 70px neeche kheench liya taaki white gap bhar jaye */
+  margin-bottom: -70px !important; 
+  
+  /* 👇 Aur andar se 140px padding de di taaki text Nav Bar ke peeche na chhupe */
+  padding: 50px 5% 140px !important; 
+  
+  font-family: 'Inter', -apple-system, sans-serif;
+  border-top-left-radius: 32px;
+  border-top-right-radius: 32px;
+  position: relative;
+  z-index: 10;
+}
+
+.footer-top-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 40px;
+}
+
+.footer-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-brand h2 {
+  color: #FFFFFF;
+  margin: 0;
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+
+/* 4 Column Layout System */
+.footer-links-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 30px;
+  margin-bottom: 0; /* Bottom margin clear kiya */
+}
+
+.footer-column h3 {
+  color: #E2E8F0; 
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 24px;
+  letter-spacing: 0.5px;
+}
+
+.footer-column p {
+  margin: 0 0 16px 0;
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s ease;
+
+  
+}
+
+.footer-column p:hover {
+  color: #38BDF8; 
+}
+
+/* 👇 Aakhri paragraph ki wajah se aane wala extra gap hataya 👇 */
+.footer-column p:last-child {
+  margin-bottom: 0;
+}
+
+/* Responsiveness for Tablets and Mobiles */
+@media (max-width: 900px) {
+  .footer-links-grid {
+    grid-template-columns: repeat(2, 1fr); 
+  }
+}
+
+@media (max-width: 500px) {
+  .footer-links-grid {
+    grid-template-columns: 1fr; 
+    gap: 40px;
+  }
+  .footer-column p {
+    padding: 6px 0;
+    margin: 0 0 10px 0;
+  }
+}

@@ -1,0 +1,181 @@
+/* Base Setup */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box; /* Essential to prevent padding from affecting box dimensions */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  /* Prevent text zoom on iOS Safari during rotation */
+  -webkit-text-size-adjust: 100%;
+  /* Remove blue highlight on mobile button tap */
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Background & Body setup */
+body {
+  background-color: #F7F7F3;
+  color: #1A1A2E;
+  min-height: 100vh;
+  min-height: 100dvh; /* Handle mobile browser bottom navigation bars (Dynamic Viewport) */
+}
+
+/* Main Container (Responsive) */
+.container {
+  width: 100%;
+  /* Restrict width to 450px on larger screens to maintain a mobile-like layout */
+  max-width: 450px;
+  /* Adjust padding based on screen size */
+  padding: clamp(20px, 5vh, 40px) 24px;
+  margin: 0 auto;
+}
+
+/* Typography (Responsive Sizes) */
+.welcome-text {
+  font-size: clamp(12px, 3.5vw, 14px); /* Smaller on phones, normal on tablets */
+  color: #555566;
+  margin-bottom: 8px;
+}
+
+h1 {
+  /* Dynamic Heading Size */
+  font-size: clamp(36px, 10vw, 46px);
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 16px;
+  color: #ffffff;
+}
+
+.subtitle {
+  color: #666677;
+  font-size: clamp(13px, 4vw, 14px);
+  margin-bottom: 30px;
+}
+
+h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-top: 30px;
+  margin-bottom: 15px;
+  color: #000000;
+}
+
+/* Primary Dark Card */
+.card-dark {
+  background-color: #1A1A2E;
+  color: #FFFFFF;
+  border-radius: 20px;
+  padding: clamp(20px, 6vw, 24px); /* Flexible padding */
+  margin-bottom: 20px;
+  width: 100%;
+}
+
+.card-dark p.label {
+  font-size: 12px;
+  color: #A0A0B0;
+  margin-bottom: 8px;
+}
+
+.card-dark h3 {
+  font-size: clamp(24px, 7vw, 28px);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.card-dark p.time {
+  font-size: 13px;
+  color: #D0D0E0;
+  margin-bottom: 24px;
+}
+
+/* Light Button inside Dark Card */
+.btn-light {
+  background-color: #E8E8EE;
+  color: #1A1A2E;
+  border: none;
+  padding: 14px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%; /* Full width on mobile */
+}
+
+.btn-light:hover {
+  background-color: #FFFFFF;
+  transform: scale(0.98); /* Visual feedback on click */
+}
+
+/* Outline Cards */
+.card-outline {
+  border: 1px solid #D0D0D8;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: transparent;
+  width: 100%;
+}
+
+.card-outline h4 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #11111A;
+  margin-bottom: 4px;
+}
+
+.card-outline p {
+  font-size: 12px;
+  color: #777788;
+}
+
+.card-outline .time {
+  font-size: 12px;
+  color: #555566;
+  white-space: nowrap; /* Prevent line breaks in time text */
+}
+
+/* Form Inputs & Links */
+.input-field {
+  width: 100%;
+  padding: 16px;
+  border: 1px solid #D0D0D8;
+  border-radius: 12px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  background-color: #FFFFFF;
+  color: #1A1A2E;
+  outline: none;
+  transition: border-color 0.2s;
+  /* Prevent typing lag on mobile */
+  -webkit-appearance: none;
+}
+
+.input-field:focus {
+  border-color: #1A1A2E; /* Darken border on focus */
+}
+
+.toggle-link {
+  color: #555566;
+  font-size: 13px;
+  text-align: center;
+  margin-top: 20px;
+  cursor: pointer;
+  display: block;
+}
+
+.toggle-link b {
+  color: #1A1A2E;
+}
+
+.alert-msg {
+  font-size: 13px;
+  text-align: center;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.alert-error { color: #D93025; } /* Red for errors */
+.alert-success { color: #188038; } /* Green for success */
