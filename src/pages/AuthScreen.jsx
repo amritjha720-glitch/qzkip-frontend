@@ -105,7 +105,7 @@ const AuthScreen = () => {
       if (res.data.action === 'SHOW_PENDING') {
         setStep('PENDING');
         localStorage.setItem('vendorAuthStep', 'PENDING');
-      }else if (res.data.action === 'SHOW_REJECTED') {
+      } else if (res.data.action === 'SHOW_REJECTED') {
         // 🟢 NAYA ADD KIYA: Agar form submit karte hi reject ho jaye, toh laal page dikhao
         setStep('REJECTED');
         localStorage.setItem('vendorAuthStep', 'REJECTED');
@@ -151,14 +151,16 @@ const AuthScreen = () => {
     }
   };
 
-  // 🟢 Logout / Change Account Handler
+  // 🟢 Logout / Change Account Handler (UPDATED FIX)
   const handleLogout = async () => {
     await signOut(auth); // Firebase se logout
     setStep('LOGIN'); 
     setGoogleData({googleUID: '', email: '', name: ''});
-    // LocalStorage se history delete
+    
+    // 🟢 FIX: Saara purana cache yahan se saaf karna zaroori hai
     localStorage.removeItem('vendorAuthStep');
     localStorage.removeItem('vendorGoogleData');
+    localStorage.removeItem('vendorToken');
   };
 
   // Premium Input Field Styling
@@ -285,8 +287,7 @@ const AuthScreen = () => {
             </div>
           )}
 
-         
-         {/* ================= STEP 4: REJECTED SCREEN 🔴 ================= */}
+         {/* ================= STEP 4: REJECTED SCREEN 🔴 (UPDATED FIX) ================= */}
           {step === 'REJECTED' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
               <div style={{ background: '#FEE2E2', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px', boxShadow: '0 8px 20px rgba(220, 38, 38, 0.15)' }}>
@@ -297,9 +298,12 @@ const AuthScreen = () => {
                 We're sorry, but your vendor application has been declined due to invalid details. You can update your details and re-apply.
               </p>
               
-              {/* 🟢 NAYA: Re-apply button jo wapas FORM par le jayega */}
+              {/* 🟢 FIX: LocalStorage update karna zaroori tha, warna refresh par wapas rejected ho jayega */}
               <button 
-                onClick={() => setStep('FORM')} 
+                onClick={() => {
+                  setStep('FORM');
+                  localStorage.setItem('vendorAuthStep', 'FORM'); 
+                }} 
                 style={{ background: '#1A1A2E', color: '#FFF', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', transition: 'background 0.2s', marginTop: '10px' }}
               >
                 Update Details & Re-apply
@@ -309,7 +313,7 @@ const AuthScreen = () => {
                 onClick={handleLogout} 
                 style={{ background: 'transparent', color: '#DC2626', border: '1px solid #DC2626', fontWeight: '800', cursor: 'pointer', padding: '14px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', marginTop: '15px' }}
               >
-                Use a different account
+                Use a different account (Clear Cache)
               </button>
             </div>
           )}
@@ -327,4 +331,4 @@ const AuthScreen = () => {
   );
 };
 
-export default AuthScreen;  
+export default AuthScreen;
