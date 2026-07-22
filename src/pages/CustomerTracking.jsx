@@ -10,12 +10,27 @@ import SmartLogo from '../components/SmartLogo';
 const BACKEND_BASE = 'https://qzkip-backend.onrender.com';
 const QUEUE_URL = `${BACKEND_BASE}/api/queue`;
 
-// 🧠 THE MASTER LOGIC: Smart ETA & Dopamine UX
-const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus) => {
+// =======================================================
+// 🧠 THE MASTER LOGIC: Smart ETA + Timer + Notification
+// =======================================================
+const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus, shopName) => {
   const [etaText, setEtaText] = useState({ time: "--", unit: "", message: "" });
   const [isFastTrack, setIsFastTrack] = useState(false);
+  const [elapsedMins, setElapsedMins] = useState(0); // Har minute time kam karne ke liye
+  
   const prevEstimatedMins = useRef(null);
+  const lastPeopleAhead = useRef(-1);
+  const notifSent = useRef(false); // Anti-spam lock (Notification 1 hi baar bajegi)
 
+  // 1️⃣ Background Timer (Har 1 minute mein elapsed time badhayega)
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedMins(prev => prev + 1);
+    }, 60000); // 60,000ms = 1 Minute
+    return () => clearInterval(timer);
+  }, []);
+
+  // 2️⃣ Main ETA Logic
   useEffect(() => {
     if (!fullQueue || fullQueue.length === 0 || !myTokenNumber || myStatus !== 'waiting') {
       setEtaText({ time: "--", unit: "", message: "" });
@@ -25,12 +40,50 @@ const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus) => {
     const myTokenNum = Number(myTokenNumber);
     const safeAvgTime = avgTime || 5;
 
-    // Calculate how many people are actually ahead
+    // Line mein aage kitne log hain
     const peopleAhead = fullQueue.filter(q => 
       q.token_number < myTokenNum && 
       (q.status === 'waiting' || q.status === 'processing')
     ).length;
 
+    // Agar line aage badhi hai (koi process/skip hua), toh local timer reset kardo
+    if (lastPeopleAhead.current !== peopleAhead) {
+      setElapsedMins(0); 
+      lastPeopleAhead.current = peopleAhead;
+    }
+
+    // 🌟 Base Time Calculation (Total Time - Jitna time guzar gaya)
+    let currentEstimatedMins = (peopleAhead * safeAvgTime) - elapsedMins;
+    if (currentEstimatedMins < 2) currentEstimatedMins = 2; // Time kabhi minus ya zero nahi hoga jab tak line mein aage log hain
+
+    // ==========================================
+    // 🔔 NOTIFICATION TRIGGER (<= 5 Mins or 1 Person)
+    // ==========================================
+    if (peopleAhead === 1 || (peopleAhead > 0 && currentEstimatedMins <= 5)) {
+      if (!notifSent.current) { // Agar abhi tak notification nahi bheji hai
+        
+        // Browser Notification
+        if ("Notification" in window && Notification.permission === "granted") {
+          new Notification("Qzkip Alert: You are NEXT! 🚀", {
+            body: `Your turn is almost here at ${shopName || 'the shop'}. Please head to the counter!`,
+            icon: '/favicon.ico'
+          });
+        }
+        
+        // Sound Play (Agar aapne alert.mp3 rakha hai public folder mein)
+        try {
+          const audio = new Audio('/alert.mp3');
+          audio.play().catch(e => console.log("Browser blocked autoplay"));
+        } catch (e) {}
+
+        notifSent.current = true; // Lock lag gaya (ab baar-baar tab tak nahi bajegi)
+      }
+    }
+
+    // ==========================================
+    // 🎨 UI MESSAGES & ETA DISPLAY
+    // ==========================================
+    
     // SCENARIO A: It's your turn
     if (peopleAhead === 0) {
       setEtaText({ time: "Next", unit: "", message: "Head to the counter!" });
@@ -45,26 +98,24 @@ const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus) => {
       return;
     }
 
-    // SCENARIO C: 2+ people ahead (Calculate smooth range)
-    let currentEstimatedMins = peopleAhead * safeAvgTime;
-
-    // FAST-TRACK LOGIC
+    // ⚡ FAST-TRACK LOGIC (Agar achanak time bohot kam ho jaye)
     if (prevEstimatedMins.current !== null) {
-      const timeDifference = prevEstimatedMins.current - currentEstimatedMins;
-      if (timeDifference >= safeAvgTime) {
+      const drop = prevEstimatedMins.current - currentEstimatedMins;
+      // Agar time 1 average slot se zyada gira hai (kisi ne skip/finish kiya)
+      if (drop >= (safeAvgTime * 0.8)) {
         setIsFastTrack(true);
-        setTimeout(() => setIsFastTrack(false), 5000); 
+        setTimeout(() => setIsFastTrack(false), 5000); // 5 second baad banner hata do
       }
     }
     prevEstimatedMins.current = currentEstimatedMins;
 
-    // Smooth Range
+    // SCENARIO C: Smooth Range (e.g., 25-35 mins)
     let minRange = currentEstimatedMins - 5;
     let maxRange = currentEstimatedMins + 5;
-    if (minRange < 5) minRange = 5; 
+    if (minRange < 3) minRange = 3; 
 
     setEtaText({ time: `${minRange}-${maxRange}`, unit: "min", message: "" });
-  }, [fullQueue, myTokenNumber, avgTime, myStatus]);
+  }, [fullQueue, myTokenNumber, avgTime, myStatus, elapsedMins, shopName]);
 
   return { etaText, isFastTrack };
 };
@@ -78,6 +129,13 @@ const CustomerTracking = () => {
   const [myTokenNum, setMyTokenNum] = useState(localStorage.getItem(`myToken_${qrId}`));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const navigate = useNavigate();
+
+  // 🔔 NOTIFICATION PERMISSION REQUEST (Load hote hi puchega)
+  useEffect(() => {
+    if ("Notification" in window && Notification.permission !== "denied" && Notification.permission !== "granted") {
+      Notification.requestPermission();
+    }
+  }, []);
 
   const fetchStatus = async () => {
     try {
@@ -150,10 +208,8 @@ const CustomerTracking = () => {
 
 
   // ==========================================
-  // 🟢 HOOKS & CALCULATIONS (Moved to Top Level)
+  // 🟢 HOOKS & CALCULATIONS
   // ==========================================
-  
-  // Safe Fallback values so Hooks don't crash before data loads
   const safeQueue = data?.full_queue || [];
   const safeAvgTime = data?.avgWaitTime || 5;
 
@@ -170,12 +226,12 @@ const CustomerTracking = () => {
     }
   }
 
-  // 🚀 Execute Smart ETA Logic (Must be ABOVE early returns)
-  const { etaText, isFastTrack } = useSmartETA(safeQueue, myTokenNum, safeAvgTime, myStatus);
+  // 🚀 Execute Smart ETA Logic (Passing shop name for notification)
+  const { etaText, isFastTrack } = useSmartETA(safeQueue, myTokenNum, safeAvgTime, myStatus, data?.shop_name);
 
 
   // ==========================================
-  // 🔴 EARLY RETURNS (Moved BELOW Hooks)
+  // 🔴 EARLY RETURNS
   // ==========================================
   if (error) return <div style={{ textAlign: 'center', padding: '50px', color: '#FF3B30', fontWeight: '700', fontFamily: 'sans-serif' }}><h3>Warning: {error}</h3></div>;
   if (!data) return <div style={{ textAlign: 'center', padding: '50px', color: '#8E8E93', fontFamily: 'sans-serif' }}><h3>Loading Live Data...</h3></div>;
