@@ -11,10 +11,9 @@ const API_URL = 'https://qzkip-backend.onrender.com/api/auth';
 const AuthScreen = () => {
   const navigate = useNavigate();
   
-  // 🟢 State ko seedha localStorage se initialize kar rahe hain (Added REJECTED)
-  const [step, setStep] = useState(() => {
-    return localStorage.getItem('vendorAuthStep') || 'LOGIN';
-  }); 
+  // 🟢 FIX: LocalStorage se azaadi! Ab app hamesha Login se shuru hogi.
+  // Database decide karega ki aage konsi screen dikhani hai.
+  const [step, setStep] = useState('LOGIN'); 
   
   const [loading, setLoading] = useState(false);
   
@@ -54,28 +53,24 @@ const AuthScreen = () => {
       
       setGoogleData(gData);
 
-      // Send request to backend for verification
+      // Send request to backend for verification (LIVE DATABASE CHECK)
       const res = await axios.post(`${API_URL}/google`, { 
         googleUID: gData.googleUID, 
         email: gData.email 
       });
       
+      // 🟢 FIX: Yahan se saare localStorage.setItem('vendorAuthStep') hata diye gaye hain
       if (res.data.action === 'SHOW_FORM') {
         setStep('FORM');
-        localStorage.setItem('vendorAuthStep', 'FORM');
         localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
       } else if (res.data.action === 'SHOW_PENDING') {
         setStep('PENDING');
-        localStorage.setItem('vendorAuthStep', 'PENDING');
         localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
       } else if (res.data.action === 'SHOW_REJECTED') {
-        // 🟢 Handle Rejected State
         setStep('REJECTED');
-        localStorage.setItem('vendorAuthStep', 'REJECTED');
         localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
       } else if (res.data.action === 'LOGIN_SUCCESS') {
         localStorage.setItem('vendorToken', res.data.token);
-        localStorage.removeItem('vendorAuthStep');
         localStorage.removeItem('vendorGoogleData');
         navigate('/dashboard');
       }
@@ -102,13 +97,11 @@ const AuthScreen = () => {
       const payload = { ...googleData, ...form };
       const res = await axios.post(`${API_URL}/complete-profile`, payload);
       
+      // 🟢 FIX: Yahan se bhi localStorage wali line hata di
       if (res.data.action === 'SHOW_PENDING') {
         setStep('PENDING');
-        localStorage.setItem('vendorAuthStep', 'PENDING');
       } else if (res.data.action === 'SHOW_REJECTED') {
-        // 🟢 NAYA ADD KIYA: Agar form submit karte hi reject ho jaye, toh laal page dikhao
         setStep('REJECTED');
-        localStorage.setItem('vendorAuthStep', 'REJECTED');
       }
     } catch (e) {
       if (e.response?.data?.errors) {
@@ -135,12 +128,9 @@ const AuthScreen = () => {
       if (res.data.action === 'SHOW_PENDING') {
         console.log("Status check: Still Pending");
       } else if (res.data.action === 'SHOW_REJECTED') {
-         // 🟢 Check status se bhi reject ho sakta hai
          setStep('REJECTED');
-         localStorage.setItem('vendorAuthStep', 'REJECTED');
       } else if (res.data.action === 'LOGIN_SUCCESS') {
         localStorage.setItem('vendorToken', res.data.token);
-        localStorage.removeItem('vendorAuthStep');
         localStorage.removeItem('vendorGoogleData');
         navigate('/dashboard');
       }
@@ -151,16 +141,17 @@ const AuthScreen = () => {
     }
   };
 
-  // 🟢 Logout / Change Account Handler (UPDATED FIX)
+  // 🟢 Logout / Change Account Handler 
   const handleLogout = async () => {
     await signOut(auth); // Firebase se logout
     setStep('LOGIN'); 
     setGoogleData({googleUID: '', email: '', name: ''});
     
-    // 🟢 FIX: Saara purana cache yahan se saaf karna zaroori hai
-    localStorage.removeItem('vendorAuthStep');
+    // 🟢 FIX: Ab sirf zaroori chizein clean hongi
     localStorage.removeItem('vendorGoogleData');
     localStorage.removeItem('vendorToken');
+    // Safety check: Agar purana koi kachra bacha ho toh usko bhi saaf kar do
+    localStorage.removeItem('vendorAuthStep'); 
   };
 
   // Premium Input Field Styling
@@ -287,7 +278,7 @@ const AuthScreen = () => {
             </div>
           )}
 
-         {/* ================= STEP 4: REJECTED SCREEN 🔴 (UPDATED FIX) ================= */}
+         {/* ================= STEP 4: REJECTED SCREEN 🔴 ================= */}
           {step === 'REJECTED' && (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
               <div style={{ background: '#FEE2E2', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px', boxShadow: '0 8px 20px rgba(220, 38, 38, 0.15)' }}>
@@ -298,12 +289,9 @@ const AuthScreen = () => {
                 We're sorry, but your vendor application has been declined due to invalid details. You can update your details and re-apply.
               </p>
               
-              {/* 🟢 FIX: LocalStorage update karna zaroori tha, warna refresh par wapas rejected ho jayega */}
+              {/* 🟢 FIX: Yahan se bhi localStorage wali line hata di, sirf UI update hoga */}
               <button 
-                onClick={() => {
-                  setStep('FORM');
-                  localStorage.setItem('vendorAuthStep', 'FORM'); 
-                }} 
+                onClick={() => setStep('FORM')} 
                 style={{ background: '#1A1A2E', color: '#FFF', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', transition: 'background 0.2s', marginTop: '10px' }}
               >
                 Update Details & Re-apply
@@ -313,7 +301,7 @@ const AuthScreen = () => {
                 onClick={handleLogout} 
                 style={{ background: 'transparent', color: '#DC2626', border: '1px solid #DC2626', fontWeight: '800', cursor: 'pointer', padding: '14px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', marginTop: '15px' }}
               >
-                Use a different account (Clear Cache)
+                Use a different account
               </button>
             </div>
           )}
