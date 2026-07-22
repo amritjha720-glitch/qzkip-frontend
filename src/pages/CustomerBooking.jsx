@@ -11,14 +11,11 @@ import GlobalSidebar from '../components/GlobalSidebar';
 const API_BASE = 'https://qzkip-backend.onrender.com/api';
 const QUEUE_URL = `${API_BASE}/queue`;
 
-
-
 const CustomerBooking = () => {
   const { qrId } = useParams();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [googleUID, setGoogleUID] = useState('');
 
   const [step, setStep] = useState(1);
@@ -30,12 +27,10 @@ const CustomerBooking = () => {
 
   useEffect(() => {
     const savedUID = localStorage.getItem('googleUID');
-    const savedPhone = localStorage.getItem('customerPhone');
     const savedName = localStorage.getItem('customerName');
 
     if (savedUID) {
       setGoogleUID(savedUID);
-      if (savedPhone) setPhone(savedPhone);
       setName(savedName || 'Walk-in');
       setStep(3);
     } else {
@@ -82,7 +77,6 @@ const CustomerBooking = () => {
 
   // 2. Execute Booking Handler
   const executeBooking = async () => {
-    // Phone length check completely removed
     setLoading(true);
     setError(null);
     try {
@@ -92,14 +86,11 @@ const CustomerBooking = () => {
         googleUID: googleUID
       };
 
-      // Removed payload.customer_phone logic
-
       const res = await axios.post(`${QUEUE_URL}/generate-token`, payload);
 
       if (res.data.success) {
         localStorage.setItem('googleUID', googleUID);
         localStorage.setItem('customerName', name);
-        // Removed localStorage.setItem('customerPhone', phone)
         localStorage.setItem(`myToken_${qrId}`, res.data.token_number);
 
         navigate(`/track/${qrId}`, { replace: true });

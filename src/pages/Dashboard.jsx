@@ -24,7 +24,6 @@ const Dashboard = () => {
   // Walk-in modal states
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInName, setWalkInName] = useState('');
-  const [walkInPhone, setWalkInPhone] = useState('');
 
   const config = { 
     headers: { Authorization: `Bearer ${localStorage.getItem('vendorToken')}` } 
@@ -193,14 +192,13 @@ const Dashboard = () => {
     try {
       await axios.post(`${QUEUE_URL}/walk-in`, {
         qr_id: vendorInfo.qr_id,
-        customer_name: cleanName,
-        customer_phone: walkInPhone || "0000000000" 
+        customer_name: cleanName
+        // Phone completely removed from frontend request
       }, config);
       
       await fetchQueue();
       setShowWalkInModal(false);
       setWalkInName('');
-      setWalkInPhone('');
     } catch (e) {
       alert(e.response?.data?.message || "Walk-in error.");
     } finally {
@@ -223,13 +221,12 @@ const Dashboard = () => {
     // Scale by 3x for HD resolution
     const scale = 3; 
     const baseWidth = 400;
-    const baseHeight = 580; // Thoda height increase kiya footer text ke liye
+    const baseHeight = 580; 
 
     canvas.width = baseWidth * scale;
     canvas.height = baseHeight * scale;
     const ctx = canvas.getContext("2d");
 
-    // Context ko bhi scale kar diya taaki coordinates normal dimensions wale hi rahen
     ctx.scale(scale, scale); 
 
     // Background
@@ -258,7 +255,7 @@ const Dashboard = () => {
     const displayId = vendorInfo?.qr_id ? `ID: ${vendorInfo.qr_id}` : ''; 
     ctx.fillText(displayId, 200, 480);
 
-    // Footer Text (Now Added to Download!)
+    // Footer Text 
     ctx.fillStyle = "#475569";
     ctx.font = "600 14px 'Arial', sans-serif";
     ctx.fillText("Skip the wait! Book from home at Qzkip.com", 200, 530);
@@ -273,7 +270,7 @@ const Dashboard = () => {
       ctx.drawImage(img, 75, 120, 250, 250);
       const link = document.createElement("a");
       link.download = `${vendorInfo?.shop_name.replace(/\s+/g, '_')}_QR_Poster.png`;
-      link.href = canvas.toDataURL("image/png", 1.0); // 1.0 forces maximum quality
+      link.href = canvas.toDataURL("image/png", 1.0); 
       link.click();
     };
   };
@@ -469,7 +466,7 @@ const Dashboard = () => {
               <h1 style={{ margin: '0 0 5px 0', color: '#0F172A', fontSize: '32px', fontWeight: '900', letterSpacing: '-1px' }}>Qzkip</h1>
               <p style={{ margin: '0 0 30px 0', color: '#64748B', fontSize: '16px', fontWeight: '700' }}>{vendorInfo?.shop_name}</p>
               <div style={{ background: '#fff', padding: '15px', display: 'inline-block', borderRadius: '24px', border: '1px solid #E2E8F0', marginBottom: '25px' }}>
-                {qrImageSrc && <img src={qrImageSrc} alt="QR" style={{ width: '220px', height: '220px', display: 'block' }} crossOrigin="anonymous" />}             
+                {qrImageSrc && <img src={qrImageSrc} alt="QR" style={{ width: '220px', height: '220px', display: 'block' }} crossOrigin="anonymous" />}            
               </div>
               <h3 style={{ margin: '0 0 8px 0', color: '#16A34A', fontSize: '18px', fontWeight: '800' }}>Skip the queue, save the time</h3>
               <p style={{ fontSize: '15px', color: '#0F172A', margin: 0, fontWeight: '800', letterSpacing: '1px', background: '#F1F5F9', padding: '8px 16px', borderRadius: '12px', display: 'inline-block' }}>ID: {vendorInfo?.qr_id}</p>
@@ -499,10 +496,12 @@ const Dashboard = () => {
           <div style={{ background: '#fff', borderRadius: '32px', padding: '35px 25px', width: '100%', maxWidth: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <h3 style={{ margin: '0 0 8px 0', color: '#0F172A', fontSize: '22px', fontWeight: '900', letterSpacing: '-0.5px' }}>Add Walk-in Customer</h3>
             <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '25px', lineHeight: '1.4', fontWeight: '500' }}>Generate a token directly from the counter without scanning a QR code.</p>
-            <input type="text" placeholder="Customer Name (Required)" value={walkInName} onChange={(e) => setWalkInName(e.target.value)} style={{ width: '100%', padding: '16px', marginBottom: '15px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#F8FAFC', boxSizing: 'border-box', fontSize: '15px', outline: 'none', fontWeight: '600' }} />
-            <input type="tel" placeholder="Phone Number (Optional)" value={walkInPhone} onChange={(e) => setWalkInPhone(e.target.value.replace(/\D/g, '').slice(0, 10))} style={{ width: '100%', padding: '16px', marginBottom: '25px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#F8FAFC', boxSizing: 'border-box', fontSize: '15px', outline: 'none', fontWeight: '600' }} />
+            
+            {/* Phone Number Input removed from here */}
+            
+            <input type="text" placeholder="Customer Name (Required)" value={walkInName} onChange={(e) => setWalkInName(e.target.value)} style={{ width: '100%', padding: '16px', marginBottom: '25px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#F8FAFC', boxSizing: 'border-box', fontSize: '15px', outline: 'none', fontWeight: '600' }} />
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button onClick={() => { setShowWalkInModal(false); setWalkInName(''); setWalkInPhone(''); }} style={{ flex: 1, padding: '16px', background: '#F1F5F9', color: '#0F172A', borderRadius: '16px', border: 'none', fontWeight: '800', cursor: 'pointer', fontSize: '15px' }}>Cancel</button>
+              <button onClick={() => { setShowWalkInModal(false); setWalkInName(''); }} style={{ flex: 1, padding: '16px', background: '#F1F5F9', color: '#0F172A', borderRadius: '16px', border: 'none', fontWeight: '800', cursor: 'pointer', fontSize: '15px' }}>Cancel</button>
               <button onClick={handleWalkInSubmit} disabled={btnLock} style={{ flex: 1, padding: '16px', background: '#3B82F6', color: '#fff', borderRadius: '16px', border: 'none', fontWeight: '800', cursor: 'pointer', fontSize: '15px', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}>{btnLock ? 'Adding...' : 'Generate'}</button>
             </div>
           </div>
