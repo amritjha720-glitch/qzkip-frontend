@@ -173,10 +173,24 @@ const ShopListing = () => {
                       <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: isClosed ? '#E5E5EA' : shopStyle.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', flexShrink: 0 }}>
                         {shopStyle.icon}
                       </div>
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <h4 style={{ margin: 0, color: '#1a1a2e', fontSize: '18px', fontWeight: '800', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>{shop.shop_name}</h4>
-                        <p style={{ fontSize: '13px', color: '#8E8E93', margin: '4px 0 0 0', fontWeight: '500' }}>ID: {shop.qr_id}</p>
-                      </div>
+                      <div style={{ flex: 1, minWidth: 0, marginRight: '10px', overflow: 'hidden' }}>
+  <h4 style={{ 
+    margin: 0, 
+    color: '#1a1a2e', 
+    fontSize: '17px', 
+    fontWeight: '800', 
+    display: '-webkit-box',
+    WebkitLineClamp: '2',
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    lineHeight: '1.3',
+    wordBreak: 'break-word'
+  }}>
+    {shop.shop_name}
+  </h4>
+  <p style={{ fontSize: '13px', color: '#8E8E93', margin: '4px 0 0 0', fontWeight: '500' }}>ID: {shop.qr_id}</p>
+</div>
                       <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px', flexShrink: 0 }}>
                         {isClosed ? (
                           <span style={{ border: '1.5px solid #C7C7CC', color: '#8E8E93', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800' }}>CLOSED</span>
