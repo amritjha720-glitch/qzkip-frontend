@@ -169,39 +169,118 @@ const ShopListing = () => {
                   const estimatedWait = totalInLine * (shop.avgTime || 5);
 
                   return (
-                    <div key={shop._id} onClick={() => !isClosed && handleShopClick(shop.qr_id)} style={{ background: isClosed ? '#F2F2F7' : '#ffffff', cursor: isClosed ? 'not-allowed' : 'pointer', padding: '16px', boxShadow: isClosed ? 'none' : '0 8px 24px rgba(0,0,0,0.04)', borderRadius: '28px', display: 'flex', alignItems: 'center', opacity: isClosed ? 0.7 : 1, transition: 'transform 0.2s', border: '1px solid #F0F0F5' }}>
-                      <div style={{ width: '64px', height: '64px', borderRadius: '20px', background: isClosed ? '#E5E5EA' : shopStyle.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '15px', flexShrink: 0 }}>
-                        {shopStyle.icon}
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0, marginRight: '10px', overflow: 'hidden' }}>
-  <h4 style={{ 
-    margin: 0, 
-    color: '#1a1a2e', 
-    fontSize: '17px', 
-    fontWeight: '800', 
-    display: '-webkit-box',
-    WebkitLineClamp: '2',
-    WebkitBoxOrient: 'vertical',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    lineHeight: '1.3',
-    wordBreak: 'break-word'
+                    <div 
+  key={shop._id} 
+  onClick={() => !isClosed && handleShopClick(shop.qr_id)} 
+  style={{ 
+    background: isClosed ? '#F8F9FA' : '#ffffff', 
+    cursor: isClosed ? 'not-allowed' : 'pointer', 
+    padding: '18px', 
+    boxShadow: isClosed ? 'none' : '0 10px 30px rgba(0,0,0,0.06)', 
+    borderRadius: '24px', 
+    display: 'flex', 
+    alignItems: 'center', 
+    opacity: isClosed ? 0.65 : 1, 
+    transition: 'all 0.25s ease', 
+    border: isClosed ? '1px solid #E5E5EA' : '1px solid rgba(168, 100, 35, 0.12)',
+    marginBottom: '16px',
+    position: 'relative',
+    overflow: 'hidden'
+  }}
+>
+  {/* Left: Modern Icon Box with Soft Glow */}
+  <div style={{ 
+    width: '68px', 
+    height: '68px', 
+    borderRadius: '20px', 
+    background: isClosed ? '#E5E5EA' : shopStyle.bg, 
+    display: 'flex', 
+    alignItems: 'center', 
+    justifyNames: 'center', 
+    justifyContent: 'center',
+    marginRight: '16px', 
+    flexShrink: 0,
+    boxShadow: isClosed ? 'none' : '0 6px 15px rgba(168, 100, 35, 0.1)'
   }}>
-    {shop.shop_name}
-  </h4>
-  <p style={{ fontSize: '13px', color: '#8E8E93', margin: '4px 0 0 0', fontWeight: '500' }}>ID: {shop.qr_id}</p>
+    {shopStyle.icon}
+  </div>
+
+  {/* Middle: Shop Name, Type & ID */}
+  <div style={{ flex: 1, minWidth: 0, marginRight: '12px' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+      <span style={{ 
+        fontSize: '11px', 
+        fontWeight: '800', 
+        textTransform: 'uppercase', 
+        letterSpacing: '0.5px',
+        color: '#A86423',
+        background: '#FDF8F2',
+        padding: '2px 8px',
+        borderRadius: '6px'
+      }}>
+        {shop.shop_type || 'Shop'}
+      </span>
+    </div>
+    
+    <h4 style={{ 
+      margin: '0 0 4px 0', 
+      color: '#1A1A2E', 
+      fontSize: '17px', 
+      fontWeight: '800', 
+      display: '-webkit-box',
+      WebkitLineClamp: '1',
+      WebkitBoxOrient: 'vertical',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      letterSpacing: '-0.3px'
+    }}>
+      {shop.shop_name}
+    </h4>
+    
+    <p style={{ fontSize: '12px', color: '#8E8E93', margin: 0, fontWeight: '600' }}>
+      ID: <span style={{ color: '#555' }}>{shop.qr_id}</span>
+    </p>
+  </div>
+
+  {/* Right: Live Queue Badge & Wait Time */}
+  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+    {isClosed ? (
+      <span style={{ 
+        background: '#E5E5EA', 
+        color: '#8E8E93', 
+        padding: '6px 14px', 
+        borderRadius: '12px', 
+        fontSize: '11px', 
+        fontWeight: '800',
+        letterSpacing: '0.5px'
+      }}>
+        CLOSED
+      </span>
+    ) : (
+      <>
+        <div style={{ 
+          background: '#E8F8F0', 
+          color: '#10B981', 
+          padding: '6px 12px', 
+          borderRadius: '12px', 
+          fontSize: '12px', 
+          fontWeight: '800', 
+          marginBottom: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+        }}>
+          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
+          {totalInLine} in line
+        </div>
+        <span style={{ fontSize: '11px', color: '#8E8E93', fontWeight: '700' }}>
+          ~{estimatedWait} min wait
+        </span>
+      </>
+    )}
+  </div>
 </div>
-                      <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginLeft: '10px', flexShrink: 0 }}>
-                        {isClosed ? (
-                          <span style={{ border: '1.5px solid #C7C7CC', color: '#8E8E93', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800' }}>CLOSED</span>
-                        ) : (
-                          <>
-                            <span style={{ background: '#E8F8F0', color: '#34C759', padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', marginBottom: '6px' }}>{totalInLine} in line</span>
-                            <span style={{ fontSize: '12px', color: '#8E8E93', fontWeight: '700', marginRight: '4px' }}>Waiting time: {estimatedWait} min</span>
-                          </>
-                        )}
-                      </div>
-                    </div>
                   );
                 })}
               </div>
