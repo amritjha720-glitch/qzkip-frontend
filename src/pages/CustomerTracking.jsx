@@ -12,12 +12,12 @@ const QUEUE_URL = `${BACKEND_BASE}/api/queue`;
 
 // 🧠 THE MASTER LOGIC: Smart ETA & Dopamine UX
 const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus) => {
-  const [etaText, setEtaText] = useState({ time: "--", unit: "min", message: "" });
+  const [etaText, setEtaText] = useState({ time: "--", unit: "", message: "" });
   const [isFastTrack, setIsFastTrack] = useState(false);
   const prevEstimatedMins = useRef(null);
 
   useEffect(() => {
-    if (!fullQueue || !myTokenNumber || myStatus !== 'waiting') {
+    if (!fullQueue || fullQueue.length === 0 || !myTokenNumber || myStatus !== 'waiting') {
       setEtaText({ time: "--", unit: "", message: "" });
       return;
     }
@@ -25,13 +25,13 @@ const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus) => {
     const myTokenNum = Number(myTokenNumber);
     const safeAvgTime = avgTime || 5;
 
-    // 1. Calculate how many people are actually ahead (waiting or processing)
+    // Calculate how many people are actually ahead
     const peopleAhead = fullQueue.filter(q => 
       q.token_number < myTokenNum && 
       (q.status === 'waiting' || q.status === 'processing')
     ).length;
 
-    // SCENARIO A: It's your turn (0 people ahead)
+    // SCENARIO A: It's your turn
     if (peopleAhead === 0) {
       setEtaText({ time: "Next", unit: "", message: "Head to the counter!" });
       setIsFastTrack(false);
@@ -48,40 +48,32 @@ const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus) => {
     // SCENARIO C: 2+ people ahead (Calculate smooth range)
     let currentEstimatedMins = peopleAhead * safeAvgTime;
 
-    // ⚡ FAST-TRACK LOGIC: Did the line jump significantly?
+    // FAST-TRACK LOGIC
     if (prevEstimatedMins.current !== null) {
       const timeDifference = prevEstimatedMins.current - currentEstimatedMins;
-      
-      // If time dropped by at least one full average service time (Someone was skipped/fast)
       if (timeDifference >= safeAvgTime) {
         setIsFastTrack(true);
-        setTimeout(() => setIsFastTrack(false), 5000); // Hide banner after 5 seconds
+        setTimeout(() => setIsFastTrack(false), 5000); 
       }
     }
-
     prevEstimatedMins.current = currentEstimatedMins;
 
-    // Smooth Range (e.g., if exactly 30, show 25 - 35)
+    // Smooth Range
     let minRange = currentEstimatedMins - 5;
     let maxRange = currentEstimatedMins + 5;
-    if (minRange < 5) minRange = 5; // Floor limit
+    if (minRange < 5) minRange = 5; 
 
-    setEtaText({ 
-      time: `${minRange}-${maxRange}`, 
-      unit: "min", 
-      message: "" 
-    });
-
+    setEtaText({ time: `${minRange}-${maxRange}`, unit: "min", message: "" });
   }, [fullQueue, myTokenNumber, avgTime, myStatus]);
 
   return { etaText, isFastTrack };
 };
 
+
 const CustomerTracking = () => {
   const { qrId } = useParams();
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
-
   const [showCancelPopup, setShowCancelPopup] = useState(false);
   const [myTokenNum, setMyTokenNum] = useState(localStorage.getItem(`myToken_${qrId}`));
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -156,30 +148,44 @@ const CustomerTracking = () => {
     }
   };
 
-  if (error) return <div style={{ textAlign: 'center', padding: '50px', color: '#FF3B30', fontWeight: '700', fontFamily: 'sans-serif' }}><h3>Warning: {error}</h3></div>;
-  if (!data) return <div style={{ textAlign: 'center', padding: '50px', color: '#8E8E93', fontFamily: 'sans-serif' }}><h3>Loading Live Data...</h3></div>;
+
+  // ==========================================
+  // 🟢 HOOKS & CALCULATIONS (Moved to Top Level)
+  // ==========================================
+  
+  // Safe Fallback values so Hooks don't crash before data loads
+  const safeQueue = data?.full_queue || [];
+  const safeAvgTime = data?.avgWaitTime || 5;
 
   let peopleAhead = 0;
   let myStatus = 'waiting';
 
-  if (myTokenNum) {
-    const myItem = data.full_queue.find(q => q.token_number === Number(myTokenNum));
+  if (data && myTokenNum) {
+    const myItem = safeQueue.find(q => q.token_number === Number(myTokenNum));
     if (myItem) {
       myStatus = myItem.status;
-      peopleAhead = data.full_queue.filter(q => q.status === 'waiting' && q.token_number < Number(myTokenNum)).length;
+      peopleAhead = safeQueue.filter(q => q.status === 'waiting' && q.token_number < Number(myTokenNum)).length;
     } else {
       myStatus = 'completed';
     }
   }
 
-  // 🚀 Execute Smart ETA Logic
-  const { etaText, isFastTrack } = useSmartETA(data.full_queue, myTokenNum, data.avgWaitTime, myStatus);
+  // 🚀 Execute Smart ETA Logic (Must be ABOVE early returns)
+  const { etaText, isFastTrack } = useSmartETA(safeQueue, myTokenNum, safeAvgTime, myStatus);
 
+
+  // ==========================================
+  // 🔴 EARLY RETURNS (Moved BELOW Hooks)
+  // ==========================================
+  if (error) return <div style={{ textAlign: 'center', padding: '50px', color: '#FF3B30', fontWeight: '700', fontFamily: 'sans-serif' }}><h3>Warning: {error}</h3></div>;
+  if (!data) return <div style={{ textAlign: 'center', padding: '50px', color: '#8E8E93', fontFamily: 'sans-serif' }}><h3>Loading Live Data...</h3></div>;
+
+
+  // Status badge configuration
   const brandDark = '#A86423';
   const brandLight = '#F9F3EA';
   const glowShadow = '0 16px 40px rgba(168, 100, 35, 0.08)';
 
-  // Status badge configuration
   let badgeConfig = { bg: brandLight, border: 'rgba(168, 100, 35, 0.15)', color: brandDark, text: 'Waiting in queue...' };
   if (myStatus === 'processing') {
     badgeConfig = { bg: '#E8F8F0', border: '#B7E4C7', color: '#34C759', text: "IT'S YOUR TURN!" };
