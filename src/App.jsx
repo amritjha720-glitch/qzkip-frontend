@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import axios from 'axios'; // 🟢 IMPORT AXIOS
 import './App.css';
 
 // Components
@@ -14,6 +15,10 @@ import CustomerBooking from './pages/CustomerBooking';
 import CustomerTracking from './pages/CustomerTracking';
 import MyBookings from './pages/MyBookings';
 import QueueHistory from './pages/QueueHistory';
+
+// 🟢 THE MASTER FIX: Ab har request ke sath secure cookie apne aap jayegi!
+// Aapko kisi aur page pe bar-bar withCredentials likhne ki zaroorat nahi hai.
+axios.defaults.withCredentials = true;
 
 function App() {
   return (

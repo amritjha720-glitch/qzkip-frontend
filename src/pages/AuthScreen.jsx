@@ -11,10 +11,7 @@ const API_URL = 'https://qzkip-backend.onrender.com/api/auth';
 const AuthScreen = () => {
   const navigate = useNavigate();
   
-  // 🟢 FIX: LocalStorage se azaadi! Ab app hamesha Login se shuru hogi.
-  // Database decide karega ki aage konsi screen dikhani hai.
   const [step, setStep] = useState('LOGIN'); 
-  
   const [loading, setLoading] = useState(false);
   
   const [googleData, setGoogleData] = useState(() => {
@@ -22,7 +19,6 @@ const AuthScreen = () => {
     return savedData ? JSON.parse(savedData) : { googleUID: '', email: '', name: '' };
   });
   
-  // KYC Form State
   const [form, setForm] = useState({ 
     phone: '', 
     shop_name: '', 
@@ -31,20 +27,28 @@ const AuthScreen = () => {
     shop_type: 'clinic' 
   });
 
-  // Token check (If already logged in, navigate to dashboard)
+  // 🟢 FIX: Global Axios Config for Cookies
+  const config = { withCredentials: true };
+
   useEffect(() => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
   // ==========================================
-  // 1. GOOGLE LOGIN HANDLER
+  // 1. GOOGLE LOGIN HANDLER (Smart Logic)
   // ==========================================
-  const handleGoogleLogin = async () => {
+  // 🟢 FIX: forceSelect parameter added
+  const handleGoogleLogin = async (forceSelect = false) => {
     setLoading(true);
     try {
-      googleProvider.setCustomParameters({
-        prompt: 'select_account'
-      });
+      
+      // Smart Account Selection Logic
+      if (forceSelect) {
+        googleProvider.setCustomParameters({ prompt: 'select_account' });
+      } else {
+        googleProvider.setCustomParameters({}); // Clear parameters for auto-login
+      }
+
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       
@@ -56,13 +60,12 @@ const AuthScreen = () => {
       
       setGoogleData(gData);
 
-      // Send request to backend for verification (LIVE DATABASE CHECK)
+      // 🟢 FIX: Added config withCredentials
       const res = await axios.post(`${API_URL}/google`, { 
         googleUID: gData.googleUID, 
         email: gData.email 
-      });
+      }, config);
       
-      // 🟢 FIX: Yahan se saare localStorage.setItem('vendorAuthStep') hata diye gaye hain
       if (res.data.action === 'SHOW_FORM') {
         setStep('FORM');
         localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
@@ -74,7 +77,7 @@ const AuthScreen = () => {
         localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
       } else if (res.data.action === 'LOGIN_SUCCESS') {
         localStorage.setItem('vendorToken', res.data.token);
-        localStorage.setItem('vendorEmail', gData.email); // 🟢 Dashboard ke liye email save kiya
+        localStorage.setItem('vendorEmail', gData.email); 
         localStorage.removeItem('vendorGoogleData');
         navigate('/dashboard');
       }
@@ -99,7 +102,8 @@ const AuthScreen = () => {
     setLoading(true);
     try {
       const payload = { ...googleData, ...form };
-      const res = await axios.post(`${API_URL}/complete-profile`, payload);
+      // 🟢 FIX: Added config withCredentials
+      const res = await axios.post(`${API_URL}/complete-profile`, payload, config);
       
       if (res.data.action === 'SHOW_PENDING') {
         setStep('PENDING');
@@ -123,10 +127,11 @@ const AuthScreen = () => {
   const checkVerificationStatus = async () => {
     setLoading(true);
     try {
+      // 🟢 FIX: Added config withCredentials
       const res = await axios.post(`${API_URL}/google`, { 
         googleUID: googleData.googleUID, 
         email: googleData.email 
-      });
+      }, config);
       
       if (res.data.action === 'SHOW_PENDING') {
         console.log("Status check: Still Pending");
@@ -134,7 +139,7 @@ const AuthScreen = () => {
          setStep('REJECTED');
       } else if (res.data.action === 'LOGIN_SUCCESS') {
         localStorage.setItem('vendorToken', res.data.token);
-        localStorage.setItem('vendorEmail', googleData.email); // 🟢 Dashboard ke liye email save kiya
+        localStorage.setItem('vendorEmail', googleData.email); 
         localStorage.removeItem('vendorGoogleData');
         navigate('/dashboard');
       }
@@ -145,20 +150,29 @@ const AuthScreen = () => {
     }
   };
 
-  // 🟢 Logout / Change Account Handler 
+  // ==========================================
+  // 4. LOGOUT & CHANGE ACCOUNT HANDLER
+  // ==========================================
   const handleLogout = async () => {
     await signOut(auth); // Firebase se logout
+    
+    try {
+      // 🟢 FIX: Call Backend to clear cookie
+      await axios.post(`${API_URL}/logout`, {}, config);
+    } catch (e) { console.log("Logout backend clear failed", e); }
+
     setStep('LOGIN'); 
     setGoogleData({googleUID: '', email: '', name: ''});
     
-    // 🟢 FIX: Ab sirf zaroori chizein clean hongi
     localStorage.removeItem('vendorGoogleData');
     localStorage.removeItem('vendorToken');
-    localStorage.removeItem('vendorEmail'); // Email bhi clear kar do
+    localStorage.removeItem('vendorEmail'); 
     localStorage.removeItem('vendorAuthStep'); 
+    
+    // 🟢 Magic Move: Force account selection next time they click login
+    handleGoogleLogin(true); 
   };
 
-  // Premium Input Field Styling
   const inputStyle = {
     width: '100%', padding: '16px', marginBottom: '16px', borderRadius: '16px', 
     border: '1px solid #E5E5EA', background: '#F8F9FA', fontSize: '15px', 
@@ -198,8 +212,9 @@ const AuthScreen = () => {
                 <p style={{ margin: 0, color: '#8E8E93', fontSize: '14px', fontWeight: '500' }}>Manage your queue seamlessly</p>
               </div>
               
+              {/* Normal fast login */}
               <button 
-                onClick={handleGoogleLogin} 
+                onClick={() => handleGoogleLogin(false)} 
                 disabled={loading} 
                 style={{ background: '#1A1A2E', color: '#fff', padding: '16px', borderRadius: '16px', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 24px rgba(26,26,46,0.2)', transition: 'transform 0.2s', marginTop: '10px' }}
               >
@@ -215,6 +230,7 @@ const AuthScreen = () => {
                   </>
                 )}
               </button>
+              
               <p style={{ textAlign: 'center', fontSize: '12px', color: '#8E8E93', marginTop: '10px', fontWeight: '500' }}>
                 One-click secure login for our partners.
               </p>
@@ -272,7 +288,6 @@ const AuthScreen = () => {
                 Your documents are being verified. Once approved, you will be able to start your queue.
               </p>
 
-              {/* 🟢 NEW: Premium Email Display Badge (Pending) */}
               <div style={{ background: '#F2F2F7', padding: '8px 16px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>
                 <div style={{ width: '8px', height: '8px', background: '#FF9500', borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 149, 0, 0.6)' }}></div>
                 <span style={{ fontSize: '12px', color: '#8E8E93', fontWeight: '600' }}>Logged in as <b style={{color: '#1A1A2E'}}>{googleData.email}</b></span>
@@ -282,6 +297,7 @@ const AuthScreen = () => {
                 {loading ? 'Checking...' : '↻ Check Status'}
               </button>
 
+              {/* Force account selection on click */}
               <span onClick={handleLogout} style={{ color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
                 Use a different account
               </span>
@@ -299,7 +315,6 @@ const AuthScreen = () => {
                 We're sorry, but your vendor application has been declined. You can update your details and re-apply.
               </p>
               
-              {/* 🟢 NEW: Premium Email Display Badge (Rejected) */}
               <div style={{ background: '#F2F2F7', padding: '8px 16px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>
                 <div style={{ width: '8px', height: '8px', background: '#DC2626', borderRadius: '50%', boxShadow: '0 0 5px rgba(220, 38, 38, 0.6)' }}></div>
                 <span style={{ fontSize: '12px', color: '#8E8E93', fontWeight: '600' }}>Logged in as <b style={{color: '#1A1A2E'}}>{googleData.email}</b></span>
@@ -312,6 +327,7 @@ const AuthScreen = () => {
                 Update Details & Re-apply
               </button>
 
+              {/* Force account selection on click */}
               <button 
                 onClick={handleLogout} 
                 style={{ background: 'transparent', color: '#DC2626', border: '1px solid #DC2626', fontWeight: '800', cursor: 'pointer', padding: '14px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', marginTop: '15px' }}

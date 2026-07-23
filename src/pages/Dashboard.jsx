@@ -27,8 +27,10 @@ const Dashboard = () => {
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInName, setWalkInName] = useState('');
 
+  // 🟢 FIX: Added withCredentials to send secure cookies with every request
   const config = { 
-    headers: { Authorization: `Bearer ${localStorage.getItem('vendorToken')}` } 
+    withCredentials: true,
+    headers: { Authorization: `Bearer ${localStorage.getItem('vendorToken')}` } // Backup for hybrid setup
   };
 
   const triggerNotification = (title, message) => {
@@ -74,7 +76,10 @@ const Dashboard = () => {
     }
 
     fetchQueue();
-    const socket = io('https://qzkip-backend.onrender.com'); 
+    // 🟢 FIX: Added withCredentials to Socket.io for secure cookie handshake
+    const socket = io('https://qzkip-backend.onrender.com', {
+      withCredentials: true
+    }); 
     
     socket.onAny((eventName, data) => {
       if (data && data.message === 'A new token has arrived!') {
@@ -178,10 +183,13 @@ const Dashboard = () => {
         setPopup({ isOpen: false });
         try { 
           await axios.post(`${QUEUE_URL}/toggle-status`, { status: false, forceCancel: true }, config); 
-        } catch (e) { console.log("Status update failed"); }
+          
+          // 🟢 FIX: Calling Backend to clear the secure cookie!
+          await axios.post(`${BACKEND_BASE}/api/auth/logout`, {}, config);
+        } catch (e) { console.log("Logout process failed:", e); }
         
         localStorage.removeItem('vendorToken');
-        localStorage.removeItem('vendorEmail'); // 🟢 Memory se email clean hoga
+        localStorage.removeItem('vendorEmail');
         navigate('/');
       }
     });
