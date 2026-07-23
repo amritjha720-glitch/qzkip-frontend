@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import axios from 'axios'; // 🟢 IMPORT AXIOS
+import axios from 'axios';
 import './App.css';
 
 // Components
@@ -16,14 +16,12 @@ import CustomerTracking from './pages/CustomerTracking';
 import MyBookings from './pages/MyBookings';
 import QueueHistory from './pages/QueueHistory';
 
-// 🟢 THE MASTER FIX: Ab har request ke sath secure cookie apne aap jayegi!
-// Aapko kisi aur page pe bar-bar withCredentials likhne ki zaroorat nahi hai.
+// THE MASTER FIX: Ab har request ke sath secure cookie apne aap jayegi!
 axios.defaults.withCredentials = true;
 
 function App() {
   return (
     <Router>
-      {/* FIX: Removed maxWidth of 480px. Now it will take 100% width, and pages will center themselves. */}
       <div style={{ width: '100%', minHeight: '100vh', position: 'relative', background: '#F8F7F3', display: 'flex', flexDirection: 'column' }}> 
         <div style={{ flex: 1, paddingBottom: '20px' }}> 
           <Routes>
