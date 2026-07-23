@@ -21,7 +21,7 @@ const Dashboard = () => {
   const [showQR, setShowQR] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
 
-  // Email fetch for UI
+  // 🟢 Vendor Email for Premium Top Nav
   const vendorEmail = vendorInfo?.email || localStorage.getItem('vendorEmail') || 'Active Session';
 
   const [showWalkInModal, setShowWalkInModal] = useState(false);
@@ -181,7 +181,7 @@ const Dashboard = () => {
         } catch (e) { console.log("Status update failed"); }
         
         localStorage.removeItem('vendorToken');
-        localStorage.removeItem('vendorEmail'); // Clean up
+        localStorage.removeItem('vendorEmail'); // 🟢 Memory se email clean hoga
         navigate('/');
       }
     });
@@ -322,7 +322,7 @@ const Dashboard = () => {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
               <div style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)' }}></div>
-              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '180px' }}>
                 {vendorEmail}
               </span>
             </div>

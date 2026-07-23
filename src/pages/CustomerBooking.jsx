@@ -55,7 +55,7 @@ const CustomerBooking = () => {
   }, [qrId]);
 
   // ==========================================
-  // 1. Google Login Handler (UPDATED)
+  // 1. Google Login Handler (UPDATED WITH EMAIL)
   // ==========================================
   const handleGoogleLogin = async () => {
     setLoading(true);
