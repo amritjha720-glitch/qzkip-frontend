@@ -21,7 +21,9 @@ const Dashboard = () => {
   const [showQR, setShowQR] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
 
-  // Walk-in modal states
+  // Email fetch for UI
+  const vendorEmail = vendorInfo?.email || localStorage.getItem('vendorEmail') || 'Active Session';
+
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInName, setWalkInName] = useState('');
 
@@ -179,6 +181,7 @@ const Dashboard = () => {
         } catch (e) { console.log("Status update failed"); }
         
         localStorage.removeItem('vendorToken');
+        localStorage.removeItem('vendorEmail'); // Clean up
         navigate('/');
       }
     });
@@ -193,7 +196,6 @@ const Dashboard = () => {
       await axios.post(`${QUEUE_URL}/walk-in`, {
         qr_id: vendorInfo.qr_id,
         customer_name: cleanName
-        // Phone completely removed from frontend request
       }, config);
       
       await fetchQueue();
@@ -213,12 +215,10 @@ const Dashboard = () => {
   const bookingUrl = vendorInfo?.qr_id ? `${window.location.origin}/book/${vendorInfo.qr_id}` : '';
   const qrImageSrc = bookingUrl ? `https://quickchart.io/qr?text=${encodeURIComponent(bookingUrl)}&size=250` : '';
 
-  // UPDATED HD DOWNLOAD LOGIC
   const downloadQRPoster = () => {
     if (!qrImageSrc) return;
     const canvas = document.createElement("canvas");
     
-    // Scale by 3x for HD resolution
     const scale = 3; 
     const baseWidth = 400;
     const baseHeight = 580; 
@@ -229,33 +229,27 @@ const Dashboard = () => {
 
     ctx.scale(scale, scale); 
 
-    // Background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, baseWidth, baseHeight);
 
-    // Qzkip Logo Text
     ctx.fillStyle = "#0F172A";
     ctx.font = "900 36px 'Arial', sans-serif";
     ctx.textAlign = "center";
     ctx.fillText("Qzkip", 200, 60);
 
-    // Shop Name
     ctx.fillStyle = "#64748B";
     ctx.font = "bold 18px 'Arial', sans-serif";
     ctx.fillText(vendorInfo?.shop_name || "Scan to join", 200, 95);
 
-    // Tagline (Green)
     ctx.fillStyle = "#16A34A"; 
     ctx.font = "900 20px 'Arial', sans-serif";
     ctx.fillText("Skip the queue, save the time", 200, 440);
 
-    // Shop ID
     ctx.fillStyle = "#0F172A";
     ctx.font = "bold 18px 'Arial', sans-serif"; 
     const displayId = vendorInfo?.qr_id ? `ID: ${vendorInfo.qr_id}` : ''; 
     ctx.fillText(displayId, 200, 480);
 
-    // Footer Text 
     ctx.fillStyle = "#475569";
     ctx.font = "600 14px 'Arial', sans-serif";
     ctx.fillText("Skip the wait! Book from home at Qzkip.com", 200, 530);
@@ -263,7 +257,6 @@ const Dashboard = () => {
     const img = new Image();
     img.crossOrigin = "Anonymous";
     
-    // Fetch a much larger QR Code dynamically for crystal clear print
     img.src = qrImageSrc.replace('size=250', 'size=1000'); 
     
     img.onload = () => {
@@ -289,13 +282,13 @@ const Dashboard = () => {
         .list-scroll::-webkit-scrollbar { width: 6px; }
         .list-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
         
-        .top-nav { display: flex; justify-content: space-between; align-items: center; padding: 20px 24px; background: linear-gradient(135deg, #A86423 0%, #754B1A 100%); flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(168, 100, 35, 0.15); border: none; }
+        .top-nav { display: flex; justify-content: space-between; align-items: center; padding: 15px 24px; background: linear-gradient(135deg, #A86423 0%, #754B1A 100%); flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(168, 100, 35, 0.15); border: none; }
         .nav-actions { display: flex; gap: 12px; flex-wrap: wrap; }
         
         @media (min-width: 1024px) {
           .dashboard-container { grid-template-columns: 380px 1fr; padding: 32px 40px; }
           .lists-wrapper { grid-template-columns: 1fr 1fr; }
-          .top-nav { padding: 20px 40px; }
+          .top-nav { padding: 15px 40px; }
         }
         @media (min-width: 1400px) {
           .dashboard-container { grid-template-columns: 420px 1fr; }
@@ -304,15 +297,37 @@ const Dashboard = () => {
 
       <CustomPopup config={popup} setConfig={setPopup} />
       
+      {/* 🟢 REDESIGNED PREMIUM TOP NAV WITH EMAIL */}
       <nav className="top-nav">
-        <div>
-          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          
+          {/* Logo Section */}
+          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', paddingRight: '20px' }}>
             <SmartLogo size={30} />
-            <h1 style={{margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px'}}>Qzkip</h1>
+            <h1 style={{margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '900', letterSpacing: '-0.5px'}}>Qzkip</h1>
           </div>
-          <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)', fontWeight: '600', marginLeft: '32px' }}>
-            {vendorInfo?.shop_name} • ID: {vendorInfo?.qr_id}
-          </span>
+
+          {/* Vertical Divider */}
+          <div style={{ width: '1px', height: '35px', background: 'rgba(255,255,255,0.2)' }}></div>
+          
+          {/* Vendor Details Section */}
+          <div style={{ marginLeft: '20px', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '15px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.2px' }}>
+                {vendorInfo?.shop_name}
+              </span>
+              <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.15)', color: '#F9F3EA', padding: '3px 8px', borderRadius: '6px', fontWeight: '800', letterSpacing: '0.5px' }}>
+                ID: {vendorInfo?.qr_id}
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
+              <div style={{ width: '6px', height: '6px', background: '#10B981', borderRadius: '50%', boxShadow: '0 0 6px rgba(16, 185, 129, 0.6)' }}></div>
+              <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', fontWeight: '600' }}>
+                {vendorEmail}
+              </span>
+            </div>
+          </div>
+          
         </div>
         
         <div className="nav-actions">
@@ -471,16 +486,7 @@ const Dashboard = () => {
               <h3 style={{ margin: '0 0 8px 0', color: '#16A34A', fontSize: '18px', fontWeight: '800' }}>Skip the queue, save the time</h3>
               <p style={{ fontSize: '15px', color: '#0F172A', margin: 0, fontWeight: '800', letterSpacing: '1px', background: '#F1F5F9', padding: '8px 16px', borderRadius: '12px', display: 'inline-block' }}>ID: {vendorInfo?.qr_id}</p>
             </div>
-            {/* Gap aur Color Fix idhar kiya hai */}
-            <p style={{ 
-              marginTop: '5px', 
-              marginBottom: '25px', /* Thoda zyada gap de diya button se */
-              fontSize: '13px', 
-              color: '#475569', /* Premium Dark Grey color */
-              fontWeight: '600', 
-              textAlign: 'center',
-              lineHeight: '1.4'
-            }}>
+            <p style={{ marginTop: '5px', marginBottom: '25px', fontSize: '13px', color: '#475569', fontWeight: '600', textAlign: 'center', lineHeight: '1.4' }}>
               Skip the wait! Book from home at <b style={{color: '#0F172A'}}>Qzkip.com</b> <br />
             </p>
             <div style={{ padding: '20px', background: '#F8FAFC', display: 'flex', gap: '10px', borderTop: '1px solid #E2E8F0' }}>
@@ -496,8 +502,6 @@ const Dashboard = () => {
           <div style={{ background: '#fff', borderRadius: '32px', padding: '35px 25px', width: '100%', maxWidth: '380px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
             <h3 style={{ margin: '0 0 8px 0', color: '#0F172A', fontSize: '22px', fontWeight: '900', letterSpacing: '-0.5px' }}>Add Walk-in Customer</h3>
             <p style={{ fontSize: '14px', color: '#64748B', marginBottom: '25px', lineHeight: '1.4', fontWeight: '500' }}>Generate a token directly from the counter without scanning a QR code.</p>
-            
-            {/* Phone Number Input removed from here */}
             
             <input type="text" placeholder="Customer Name (Required)" value={walkInName} onChange={(e) => setWalkInName(e.target.value)} style={{ width: '100%', padding: '16px', marginBottom: '25px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#F8FAFC', boxSizing: 'border-box', fontSize: '15px', outline: 'none', fontWeight: '600' }} />
             <div style={{ display: 'flex', gap: '12px' }}>
