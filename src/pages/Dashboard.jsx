@@ -34,23 +34,33 @@ const Dashboard = () => {
   };
 
   const triggerNotification = (title, message) => {
-    const audio = new Audio('/alert.mp3'); 
-    audio.play().catch(error => console.log("Sound blocked by browser", error));
+  const audio = new Audio('/alert.mp3'); 
+  audio.play().catch(error => console.log("Sound blocked by browser", error));
 
-    if (!("Notification" in window)) {
-      return;
-    }
+  if (!("Notification" in window)) {
+    return;
+  }
 
-    if (Notification.permission === "granted") {
+  if (Notification.permission === "granted") {
+    try {
+      // 🟢 FIX: Wrap in try-catch to prevent mobile crash
       new Notification(title, { body: message, icon: '/favicon.ico' });
-    } else if (Notification.permission !== "denied") {
-      Notification.requestPermission().then(permission => {
-        if (permission === "granted") {
-          new Notification(title, { body: message });
-        }
-      });
+    } catch (e) {
+      console.log("Mobile browser blocked Notification popup, playing audio only.");
     }
-  };
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        try {
+          // 🟢 FIX: Wrap in try-catch here as well
+          new Notification(title, { body: message });
+        } catch (e) {
+          console.log("Mobile browser blocked Notification popup, playing audio only.");
+        }
+      }
+    });
+  }
+};
 
   const fetchQueue = async () => {
     try {

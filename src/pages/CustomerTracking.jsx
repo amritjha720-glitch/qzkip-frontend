@@ -63,12 +63,18 @@ const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus, shopName) 
       if (!notifSent.current) { // Agar abhi tak notification nahi bheji hai
         
         // Browser Notification
-        if ("Notification" in window && Notification.permission === "granted") {
-          new Notification("Qzkip Alert: You are NEXT! 🚀", {
-            body: `Your turn is almost here at ${shopName || 'the shop'}. Please head to the counter!`,
-            icon: '/favicon.ico'
-          });
-        }
+       if ("Notification" in window && Notification.permission === "granted") {
+  try {
+    // Laptop pe chal jayega
+    new Notification("Qzkip Alert: You are NEXT! 🚀", {
+      body: `Your turn is almost here at ${shopName || 'the shop'}. Please head to the counter!`,
+      icon: '/favicon.ico'
+    });
+  } catch (error) {
+    // Mobile pe crash hone se bacha lega aur chup-chaap aage badh jayega!
+    console.log("Mobile browser blocked Notification popup, playing audio only.");
+  }
+}
         
         // Sound Play (Agar aapne alert.mp3 rakha hai public folder mein)
         try {
@@ -418,8 +424,7 @@ const CustomerTracking = () => {
               )}
             </div>
           </div>
-
-        </div>
+        </div>  
 
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px', width: '100%', marginTop: 'auto', paddingTop: '30px', paddingBottom: '120px' }}>
           {myStatus === 'waiting' && myTokenNum && (
