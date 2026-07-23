@@ -99,7 +99,7 @@ const useSmartETA = (fullQueue, myTokenNumber, avgTime = 5, myStatus, shopName) 
 
     // SCENARIO B: Only 1 person ahead
     if (peopleAhead === 1) {
-      setEtaText({ time: "~5", unit: "min", message: "You are NEXT! Be ready." });
+      setEtaText({ time: "5", unit: "min", message: "You are NEXT! Be ready." });
       setIsFastTrack(false);
       return;
     }
