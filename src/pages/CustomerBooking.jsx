@@ -61,6 +61,9 @@ const CustomerBooking = () => {
     setLoading(true);
     setError(null);
     try {
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
       

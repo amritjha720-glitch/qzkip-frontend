@@ -3,9 +3,8 @@ import { auth, googleProvider } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 
 const CustomPopup = ({ config, setConfig }) => {
-  // NEW: Removed extra states (step, phone, userData)
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null); // FIX: Added missing error state
+  const [error, setError] = useState(null); 
 
   if (!config.isOpen) return null;
 
@@ -23,20 +22,25 @@ const CustomPopup = ({ config, setConfig }) => {
   };
 
   // ==========================================
-  // AUTH LOGIC (Direct Login - No Phone Required)
+  // AUTH LOGIC (Direct Login - With Account Selector)
   // ==========================================
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
     try {
+      // 🟢 FIX 1: Force Google to ALWAYS show the account selection prompt
+      googleProvider.setCustomParameters({
+        prompt: 'select_account'
+      });
+
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
 
-      // THE MAGIC: Simplified requirements, save directly
+      // 🟢 FIX 2: Save the Email along with UID and Name
       localStorage.setItem('googleUID', user.uid);
       localStorage.setItem('customerName', user.displayName || 'Customer');
+      localStorage.setItem('customerEmail', user.email); // 👈 Email saved here!
       
-      // If a special success function is passed, call it
       if (config.onSuccess) {
         config.onSuccess();
         closePopup();
@@ -44,7 +48,6 @@ const CustomPopup = ({ config, setConfig }) => {
         handleConfirm();
       }
     } catch (err) {
-      // If the user closes the popup themselves, ignore it
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
         console.log("User closed the popup.");
         setError(null); 
