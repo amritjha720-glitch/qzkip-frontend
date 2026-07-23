@@ -54,15 +54,22 @@ const CustomerBooking = () => {
       });
   }, [qrId]);
 
-  // 1. Google Login Handler
+  // ==========================================
+  // 1. Google Login Handler (UPDATED)
+  // ==========================================
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError(null);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
+      
       setGoogleUID(user.uid);
       setName(user.displayName || 'Customer');
+      
+      // 🟢 FIX: Yahan email save ho raha hai taaki Sidebar read kar sake!
+      localStorage.setItem('customerEmail', user.email);
+
       setStep(3);
     } catch (err) {
       if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
@@ -207,6 +214,7 @@ const CustomerBooking = () => {
                     onClick={() => {
                       localStorage.removeItem('googleUID');
                       localStorage.removeItem('customerName');
+                      localStorage.removeItem('customerEmail'); // 🟢 Clean Email on switch
                       setName(''); setGoogleUID('');
                       setStep(1);
                     }}
