@@ -41,7 +41,7 @@ const CustomerBooking = () => {
   useEffect(() => {
     axios.get(`${QUEUE_URL}/public-status/${qrId}`)
       .then(res => {
-        console.log("BACKEND DATA:", res.data);
+         console.log("BACKEND DATA:", res.data);
         setShopStats({
           name: res.data.shop_name || 'Shop Name Missing',
           count: res.data.full_queue ? res.data.full_queue.filter(q => q.status === 'waiting').length : 0,
