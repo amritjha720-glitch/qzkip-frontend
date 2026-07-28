@@ -35,7 +35,7 @@ const BottomNav = () => {
       maxWidth: '420px',         
       background: '#2B2624', 
       display: 'flex', 
-      justifyContent: 'space-between', 
+      justifyContent: 'space-between',
       alignItems: 'center',
       padding: '16px 24px',
       boxShadow: '0 20px 40px rgba(0,0,0,0.2)', 

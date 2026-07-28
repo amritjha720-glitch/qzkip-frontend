@@ -21,46 +21,42 @@ const Dashboard = () => {
   const [showQR, setShowQR] = useState(false);
   const [isOpen, setIsOpen] = useState(true);
 
-  // 🟢 Vendor Email for Premium Top Nav
   const vendorEmail = vendorInfo?.email || localStorage.getItem('vendorEmail') || 'Active Session';
 
   const [showWalkInModal, setShowWalkInModal] = useState(false);
   const [walkInName, setWalkInName] = useState('');
 
-  // 🟢 FIX: Added withCredentials to send secure cookies with every request
   const config = { 
     withCredentials: true,
-    headers: { Authorization: `Bearer ${localStorage.getItem('vendorToken')}` } // Backup for hybrid setup
+    headers: { Authorization: `Bearer ${localStorage.getItem('vendorToken')}` } 
   };
 
   const triggerNotification = (title, message) => {
-  const audio = new Audio('/alert.mp3'); 
-  audio.play().catch(error => console.log("Sound blocked by browser", error));
+    const audio = new Audio('/alert.mp3'); 
+    audio.play().catch(error => console.log("Sound blocked by browser", error));
 
-  if (!("Notification" in window)) {
-    return;
-  }
-
-  if (Notification.permission === "granted") {
-    try {
-      // 🟢 FIX: Wrap in try-catch to prevent mobile crash
-      new Notification(title, { body: message, icon: '/favicon.ico' });
-    } catch (e) {
-      console.log("Mobile browser blocked Notification popup, playing audio only.");
+    if (!("Notification" in window)) {
+      return;
     }
-  } else if (Notification.permission !== "denied") {
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        try {
-          // 🟢 FIX: Wrap in try-catch here as well
-          new Notification(title, { body: message });
-        } catch (e) {
-          console.log("Mobile browser blocked Notification popup, playing audio only.");
-        }
+
+    if (Notification.permission === "granted") {
+      try {
+        new Notification(title, { body: message, icon: '/favicon.ico' });
+      } catch (e) {
+        console.log("Mobile browser blocked Notification popup, playing audio only.");
       }
-    });
-  }
-};
+    } else if (Notification.permission !== "denied") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          try {
+            new Notification(title, { body: message });
+          } catch (e) {
+            console.log("Mobile browser blocked Notification popup, playing audio only.");
+          }
+        }
+      });
+    }
+  };
 
   const fetchQueue = async () => {
     try {
@@ -86,7 +82,6 @@ const Dashboard = () => {
     }
 
     fetchQueue();
-    // 🟢 FIX: Added withCredentials to Socket.io for secure cookie handshake
     const socket = io('https://qzkip-backend.onrender.com', {
       withCredentials: true
     }); 
@@ -193,8 +188,6 @@ const Dashboard = () => {
         setPopup({ isOpen: false });
         try { 
           await axios.post(`${QUEUE_URL}/toggle-status`, { status: false, forceCancel: true }, config); 
-          
-          // 🟢 FIX: Calling Backend to clear the secure cookie!
           await axios.post(`${BACKEND_BASE}/api/auth/logout`, {}, config);
         } catch (e) { console.log("Logout process failed:", e); }
         
@@ -315,20 +308,16 @@ const Dashboard = () => {
 
       <CustomPopup config={popup} setConfig={setPopup} />
       
-      {/* 🟢 REDESIGNED PREMIUM TOP NAV WITH EMAIL */}
       <nav className="top-nav">
         <div style={{ display: 'flex', alignItems: 'center' }}>
           
-          {/* Logo Section */}
           <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', paddingRight: '20px' }}>
             <SmartLogo size={30} />
             <h1 style={{margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '900', letterSpacing: '-0.5px'}}>Qzkip</h1>
           </div>
 
-          {/* Vertical Divider */}
           <div style={{ width: '1px', height: '35px', background: 'rgba(255,255,255,0.2)' }}></div>
           
-          {/* Vendor Details Section */}
           <div style={{ marginLeft: '20px', display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '15px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.2px' }}>
@@ -370,8 +359,19 @@ const Dashboard = () => {
             <h1 style={{ fontSize: '85px', margin: '0 0 5px 0', fontWeight: '900', letterSpacing: '-2px', lineHeight: '1' }}>
               {serving ? `#${serving.token_number}` : (waiting.length > 0 ? "Call Next" : "Done")}
             </h1>
-            <p style={{ fontSize: '18px', margin: '0 0 35px 0', color: '#CBD5E1', fontWeight: '500' }}>
-              {serving ? `Customer: ${serving.customer_name}` : (waiting.length > 0 ? "Line is waiting..." : "All caught up!")}
+            
+            {/* 🟢 MAGICAL FIX 1: Active Token Badge */}
+            <p style={{ fontSize: '18px', margin: '0 0 35px 0', color: '#CBD5E1', fontWeight: '500', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+              {serving ? (
+                <>
+                  Customer: {serving.customer_name}
+                  {serving.googleUID === 'walk_in' ? (
+                    <span style={{ fontSize: '11px', background: '#334155', color: '#CBD5E1', padding: '4px 10px', borderRadius: '8px', fontWeight: '700' }}>Walk-in</span>
+                  ) : (
+                    <span style={{ fontSize: '11px', background: 'rgba(34, 197, 94, 0.2)', color: '#4ADE80', padding: '4px 10px', borderRadius: '8px', fontWeight: '700', border: '1px solid rgba(34, 197, 94, 0.3)' }}>Online App</span>
+                  )}
+                </>
+              ) : (waiting.length > 0 ? "Line is waiting..." : "All caught up!")}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -435,7 +435,16 @@ const Dashboard = () => {
                           #{q.token_number}
                         </div>
                         <div>
-                          <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>{q.customer_name}</h4>
+                          
+                          {/* 🟢 MAGICAL FIX 2: Waiting List Badge */}
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#0F172A', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {q.customer_name}
+                            {q.googleUID === 'walk_in' ? (
+                              <span style={{ fontSize: '10px', background: '#E2E8F0', color: '#475569', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>Walk-in</span>
+                            ) : (
+                              <span style={{ fontSize: '10px', background: '#DCFCE7', color: '#16A34A', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>Online</span>
+                            )}
+                          </h4>
                           <p style={{ margin: 0, fontSize: '12px', color: '#64748B', fontWeight: '600' }}>Status: Waiting</p>
                         </div>
                       </div>
@@ -469,7 +478,16 @@ const Dashboard = () => {
                           #{q.token_number}
                         </div>
                         <div>
-                          <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#0F172A', fontWeight: '700' }}>{q.customer_name}</h4>
+                          
+                          {/* 🟢 MAGICAL FIX 3: Skipped List Badge */}
+                          <h4 style={{ margin: '0 0 4px 0', fontSize: '15px', color: '#0F172A', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            {q.customer_name}
+                            {q.googleUID === 'walk_in' ? (
+                              <span style={{ fontSize: '10px', background: '#FDE68A', color: '#B45309', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>Walk-in</span>
+                            ) : (
+                              <span style={{ fontSize: '10px', background: '#D1FAE5', color: '#065F46', padding: '2px 6px', borderRadius: '4px', fontWeight: '800' }}>Online</span>
+                            )}
+                          </h4>
                           <p style={{ margin: 0, fontSize: '11px', color: '#D97706', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <Clock size={12}/> Expires {new Date(q.graceEndTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
