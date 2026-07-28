@@ -111,14 +111,27 @@ const CustomerBooking = () => {
     }
   };
 
+  // 🟢 SMART ICON LOGIC: Ye purane 'switch' ko replace karega
   const getShopStyle = (type) => {
     const safeType = (type || '').toLowerCase().trim();
-    switch (safeType) {
-      case 'clinic': return { icon: <Stethoscope size={32} color="#007AFF" />, bg: '#E5F1FF', shadow: 'rgba(0, 122, 255, 0.15)' };
-      case 'barber': return { icon: <Scissors size={32} color="#FF9500" />, bg: '#FFF4E5', shadow: 'rgba(255, 149, 0, 0.15)' };
-      case 'cyber cafe': return { icon: <Monitor size={32} color="#AF52DE" />, bg: '#F4E5FF', shadow: 'rgba(175, 82, 222, 0.15)' };
-      default: return { icon: <Store size={32} color="#1A1A2E" />, bg: '#F8D548', shadow: 'rgba(248, 213, 72, 0.2)' };
+
+    // 1. Barber / Salon / Haircut (Kuch bhi match ho, Scissors aayega)
+    if (safeType.includes('barber') || safeType.includes('salon') || safeType.includes('hair')) {
+      return { icon: <Scissors size={32} color="#FF9500" />, bg: '#FFF4E5', shadow: 'rgba(255, 149, 0, 0.15)' };
     }
+    
+    // 2. Clinic / Doctor / Hospital
+    if (safeType.includes('clinic') || safeType.includes('doctor') || safeType.includes('health') || safeType.includes('medical')) {
+      return { icon: <Stethoscope size={32} color="#007AFF" />, bg: '#E5F1FF', shadow: 'rgba(0, 122, 255, 0.15)' };
+    }
+    
+    // 3. Cyber Cafe / Computer
+    if (safeType.includes('cyber') || safeType.includes('cafe') || safeType.includes('computer')) {
+      return { icon: <Monitor size={32} color="#AF52DE" />, bg: '#F4E5FF', shadow: 'rgba(175, 82, 222, 0.15)' };
+    }
+
+    // 4. Default Icon (Agar kuch match na ho toh normal dukaan)
+    return { icon: <Store size={32} color="#1A1A2E" />, bg: '#F8D548', shadow: 'rgba(248, 213, 72, 0.2)' };
   };
 
   const shopStyle = getShopStyle(shopStats.type);
