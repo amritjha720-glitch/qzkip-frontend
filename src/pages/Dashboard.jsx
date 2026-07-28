@@ -323,8 +323,8 @@ const Dashboard = () => {
               <span style={{ fontSize: '15px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.2px' }}>
                 {vendorInfo?.shop_name}
               </span>
-              <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.15)', color: '#F9F3EA', padding: '3px 8px', borderRadius: '6px', fontWeight: '700', letterSpacing: '0.5px', maxWidth: '140px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'inline-block', verticalAlign: 'middle' }}>
-                {vendorEmail}
+              <span style={{ fontSize: '11px', background: 'rgba(255,255,255,0.15)', color: '#F9F3EA', padding: '3px 8px', borderRadius: '6px', fontWeight: '800', letterSpacing: '0.5px' }}>
+                ID: {vendorInfo?.qr_id}
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '3px' }}>
