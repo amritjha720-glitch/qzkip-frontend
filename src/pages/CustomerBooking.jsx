@@ -41,6 +41,7 @@ const CustomerBooking = () => {
   useEffect(() => {
     axios.get(`${QUEUE_URL}/public-status/${qrId}`)
       .then(res => {
+        console.log("BACKEND DATA:", res.data);
         setShopStats({
           name: res.data.shop_name || 'Shop Name Missing',
           count: res.data.full_queue ? res.data.full_queue.filter(q => q.status === 'waiting').length : 0,
@@ -112,29 +113,32 @@ const CustomerBooking = () => {
   };
 
   // 🟢 SMART ICON LOGIC: Ye purane 'switch' ko replace karega
-  const getShopStyle = (type) => {
-    const safeType = (type || '').toLowerCase().trim();
+  // 🟢 ULTRA SMART LOGIC: Database se Type aaye, ya sirf Naam aaye, dono check karega!
+  const getShopStyle = (type, shopName) => {
+    // Type aur Shop ka naam dono ko mila kar search karenge (Ekdum safe)
+    const searchString = `${type || ''} ${shopName || ''}`.toLowerCase().trim();
 
-    // 1. Barber / Salon / Haircut (Kuch bhi match ho, Scissors aayega)
-    if (safeType.includes('barber') || safeType.includes('salon') || safeType.includes('hair')) {
-      return { icon: <Scissors size={32} color="#FF9500" />, bg: '#FFF4E5', shadow: 'rgba(255, 149, 0, 0.15)' };
+    // 1. Barber / Salon / Haircut / Hair
+    if (searchString.includes('barber') || searchString.includes('salon') || searchString.includes('hair') || searchString.includes('cut')) {
+      return { icon: <Scissors size={32} color="#FF9500" />, bg: '#FFF4E5', shadow: 'transparent' };
     }
     
-    // 2. Clinic / Doctor / Hospital
-    if (safeType.includes('clinic') || safeType.includes('doctor') || safeType.includes('health') || safeType.includes('medical')) {
-      return { icon: <Stethoscope size={32} color="#007AFF" />, bg: '#E5F1FF', shadow: 'rgba(0, 122, 255, 0.15)' };
+    // 2. Clinic / Doctor / Hospital / Health
+    if (searchString.includes('clinic') || searchString.includes('doctor') || searchString.includes('health') || searchString.includes('medical') || searchString.includes('dr')) {
+      return { icon: <Stethoscope size={32} color="#007AFF" />, bg: '#E5F1FF', shadow: 'transparent' };
     }
     
-    // 3. Cyber Cafe / Computer
-    if (safeType.includes('cyber') || safeType.includes('cafe') || safeType.includes('computer')) {
-      return { icon: <Monitor size={32} color="#AF52DE" />, bg: '#F4E5FF', shadow: 'rgba(175, 82, 222, 0.15)' };
+    // 3. Cyber Cafe / Computer / CSC
+    if (searchString.includes('cyber') || searchString.includes('cafe') || searchString.includes('computer')) {
+      return { icon: <Monitor size={32} color="#AF52DE" />, bg: '#F4E5FF', shadow: 'transparent' };
     }
 
-    // 4. Default Icon (Agar kuch match na ho toh normal dukaan)
-    return { icon: <Store size={32} color="#1A1A2E" />, bg: '#F8D548', shadow: 'rgba(248, 213, 72, 0.2)' };
+    // 4. Default Icon (Clean greyish-white)
+    return { icon: <Store size={32} color="#1A1A2E" />, bg: '#F1F5F9', shadow: 'transparent' };
   };
 
-  const shopStyle = getShopStyle(shopStats.type);
+  // 🟢 DHYAN DEIN: Yahan type aur name DONO pass karne hain
+  const shopStyle = getShopStyle(shopStats.type, shopStats.name);
 
   return (
     <div style={{ background: '#F8F7F3', minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', fontFamily: "-apple-system, BlinkMacSystemFont, sans-serif" }}>
