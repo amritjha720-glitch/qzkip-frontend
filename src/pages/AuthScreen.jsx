@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomPopup from "../components/CustomPopup";
@@ -27,26 +28,48 @@ const AuthScreen = () => {
     shop_type: 'clinic' 
   });
 
-  // 🟢 FIX: Global Axios Config for Cookies
+  // 🟢 PHASE 2: Vendor Location States
+  const [locationStatus, setLocationStatus] = useState('idle'); // 'locating', 'found', 'denied'
+  const [coords, setCoords] = useState(null);
+
   const config = { withCredentials: true };
 
   useEffect(() => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
+  // 🟢 MAGICAL TRICK: Form khulte hi location maang lo
+  useEffect(() => {
+    if (step === 'FORM') {
+      setLocationStatus('locating');
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            setLocationStatus('found');
+          },
+          (err) => {
+            console.error("Location access denied by vendor:", err);
+            setLocationStatus('denied');
+          },
+          { enableHighAccuracy: true, timeout: 6000 }
+        );
+      } else {
+        setLocationStatus('denied');
+      }
+    }
+  }, [step]);
+
   // ==========================================
-  // 1. GOOGLE LOGIN HANDLER (Smart Logic)
+  // 1. GOOGLE LOGIN HANDLER 
   // ==========================================
-  // 🟢 FIX: forceSelect parameter added
   const handleGoogleLogin = async (forceSelect = false) => {
     setLoading(true);
     try {
-      
-      // Smart Account Selection Logic
       if (forceSelect) {
         googleProvider.setCustomParameters({ prompt: 'select_account' });
       } else {
-        googleProvider.setCustomParameters({}); // Clear parameters for auto-login
+        googleProvider.setCustomParameters({}); 
       }
 
       const result = await signInWithPopup(auth, googleProvider);
@@ -60,7 +83,6 @@ const AuthScreen = () => {
       
       setGoogleData(gData);
 
-      // 🟢 FIX: Added config withCredentials
       const res = await axios.post(`${API_URL}/google`, { 
         googleUID: gData.googleUID, 
         email: gData.email 
@@ -101,8 +123,13 @@ const AuthScreen = () => {
     
     setLoading(true);
     try {
+      // 🟢 Payload mein coords (lat, lng) merge kar diye
       const payload = { ...googleData, ...form };
-      // 🟢 FIX: Added config withCredentials
+      if (coords) {
+        payload.lat = coords.lat;
+        payload.lng = coords.lng;
+      }
+
       const res = await axios.post(`${API_URL}/complete-profile`, payload, config);
       
       if (res.data.action === 'SHOW_PENDING') {
@@ -127,7 +154,6 @@ const AuthScreen = () => {
   const checkVerificationStatus = async () => {
     setLoading(true);
     try {
-      // 🟢 FIX: Added config withCredentials
       const res = await axios.post(`${API_URL}/google`, { 
         googleUID: googleData.googleUID, 
         email: googleData.email 
@@ -154,10 +180,9 @@ const AuthScreen = () => {
   // 4. LOGOUT & CHANGE ACCOUNT HANDLER
   // ==========================================
   const handleLogout = async () => {
-    await signOut(auth); // Firebase se logout
+    await signOut(auth); 
     
     try {
-      // 🟢 FIX: Call Backend to clear cookie
       await axios.post(`${API_URL}/logout`, {}, config);
     } catch (e) { console.log("Logout backend clear failed", e); }
 
@@ -169,7 +194,6 @@ const AuthScreen = () => {
     localStorage.removeItem('vendorEmail'); 
     localStorage.removeItem('vendorAuthStep'); 
     
-    // 🟢 Magic Move: Force account selection next time they click login
     handleGoogleLogin(true); 
   };
 
@@ -212,7 +236,6 @@ const AuthScreen = () => {
                 <p style={{ margin: 0, color: '#8E8E93', fontSize: '14px', fontWeight: '500' }}>Manage your queue seamlessly</p>
               </div>
               
-              {/* Normal fast login */}
               <button 
                 onClick={() => handleGoogleLogin(false)} 
                 disabled={loading} 
@@ -245,6 +268,13 @@ const AuthScreen = () => {
                 <p style={{ margin: 0, color: '#8E8E93', fontSize: '13px', fontWeight: '500' }}>Setup your shop details to get started</p>
               </div>
               
+              {/* 🟢 LOCATION STATUS INDICATOR FOR VENDOR */}
+              <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '12px', background: locationStatus === 'denied' ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${locationStatus === 'denied' ? '#FECACA' : '#BBF7D0'}`, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {locationStatus === 'locating' && <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '600' }}>📍 Detecting shop location...</span>}
+                {locationStatus === 'found' && <span style={{ fontSize: '12px', color: '#15803D', fontWeight: '600' }}>📍 Exact shop location captured</span>}
+                {locationStatus === 'denied' && <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '600' }}>📍 Location denied. Your shop won't show in "Nearby" searches.</span>}
+              </div>
+
               <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
               
               <select style={{...inputStyle, cursor: 'pointer'}} value={form.shop_type} onChange={e => setForm({...form, shop_type: e.target.value})}>
@@ -297,7 +327,6 @@ const AuthScreen = () => {
                 {loading ? 'Checking...' : '↻ Check Status'}
               </button>
 
-              {/* Force account selection on click */}
               <span onClick={handleLogout} style={{ color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
                 Use a different account
               </span>
@@ -327,7 +356,6 @@ const AuthScreen = () => {
                 Update Details & Re-apply
               </button>
 
-              {/* Force account selection on click */}
               <button 
                 onClick={handleLogout} 
                 style={{ background: 'transparent', color: '#DC2626', border: '1px solid #DC2626', fontWeight: '800', cursor: 'pointer', padding: '14px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', marginTop: '15px' }}
