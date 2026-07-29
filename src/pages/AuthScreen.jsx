@@ -14,7 +14,7 @@ const AuthScreen = () => {
   
   const [step, setStep] = useState('LOGIN'); 
   const [loading, setLoading] = useState(false);
-  const [popup, setPopup] = useState({ isOpen: false }); // 🟢 FIXED: Added missing Popup State
+  const [popup, setPopup] = useState({ isOpen: false }); 
   
   const [googleData, setGoogleData] = useState(() => {
     const savedData = localStorage.getItem('vendorGoogleData');
@@ -24,6 +24,7 @@ const AuthScreen = () => {
   const [form, setForm] = useState({ 
     phone: '', 
     shop_name: '', 
+    shop_address: '', // 🟢 NEW: Manual Address Field
     document_type: 'PAN',
     document_number: '',
     shop_type: 'clinic' 
@@ -39,7 +40,6 @@ const AuthScreen = () => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
-  // 🟢 FEATURE: Reusable Location Request Function
   const requestLocation = () => {
     setLocationStatus('locating');
     if (navigator.geolocation) {
@@ -68,7 +68,6 @@ const AuthScreen = () => {
     }
   };
 
-  // 🟢 MAGICAL TRICK: Form khulte hi location maang lo
   useEffect(() => {
     if (step === 'FORM') {
       requestLocation();
@@ -132,13 +131,19 @@ const AuthScreen = () => {
   // 2. KYC FORM SUBMIT HANDLER
   // ==========================================
   const handleFormSubmit = async () => {
-    if (form.phone.length !== 10 || !form.shop_name || !form.document_number) {
-      return setPopup({ isOpen: true, title: 'Missing Fields', message: 'Please fill out all the fields correctly!', type: 'alert', confirmText: 'OK' });
+    // 🟢 NEW: Manual Address Validation (at least 10 chars)
+    if (form.phone.length !== 10 || !form.shop_name || !form.document_number || form.shop_address.trim().length < 10) {
+      return setPopup({ 
+        isOpen: true, 
+        title: 'Missing Fields', 
+        message: 'Please fill out all fields correctly. Ensure the shop address is complete.', 
+        type: 'alert', 
+        confirmText: 'OK' 
+      });
     }
     
     setLoading(true);
     try {
-      // 🟢 Payload mein coords (lat, lng) merge kar diye
       const payload = { ...googleData, ...form };
       if (coords) {
         payload.lat = coords.lat;
@@ -222,7 +227,7 @@ const AuthScreen = () => {
   return (
     <div style={{ minHeight: '100vh', background: '#F8F7F3', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
       
-      <CustomPopup config={popup} setConfig={setPopup} /> {/* 🟢 FIXED: Added Popup Component */}
+      <CustomPopup config={popup} setConfig={setPopup} /> 
 
       {/* GLOBAL BRANDING HEADER */}
       <div style={{ 
@@ -291,20 +296,28 @@ const AuthScreen = () => {
                 background: locationStatus === 'denied' ? '#FEF2F2' : '#F0FDF4', 
                 border: `1px solid ${locationStatus === 'denied' ? '#FECACA' : '#BBF7D0'}`, 
                 display: 'flex', alignItems: 'center', gap: '8px',
-                cursor: locationStatus === 'denied' ? 'pointer' : 'default' // Add pointer if denied
+                cursor: locationStatus === 'denied' ? 'pointer' : 'default' 
               }}
-              onClick={() => locationStatus === 'denied' && requestLocation()} // Retry on click
+              onClick={() => locationStatus === 'denied' && requestLocation()} 
               >
-                {locationStatus === 'locating' && <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '600' }}>📍 Detecting shop location...</span>}
-                {locationStatus === 'found' && <span style={{ fontSize: '12px', color: '#15803D', fontWeight: '600' }}>📍 Exact shop location captured</span>}
+                {locationStatus === 'locating' && <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '600' }}>📍 Detecting GPS location...</span>}
+                {locationStatus === 'found' && <span style={{ fontSize: '12px', color: '#15803D', fontWeight: '600' }}>📍 GPS location captured for Maps</span>}
                 {locationStatus === 'denied' && (
                   <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '600' }}>
-                    📍 Location denied. <span style={{textDecoration: 'underline'}}>Tap to retry</span> so customers can find you.
+                    📍 GPS denied. <span style={{textDecoration: 'underline'}}>Tap to retry</span> so customers can find you on Map.
                   </span>
                 )}
               </div>
 
               <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
+              
+              {/* 🟢 NEW: Manual Text Area for Shop Address */}
+              <textarea 
+                placeholder="Complete Shop Address (e.g., Shop No. 5, Main Market)" 
+                style={{ ...inputStyle, resize: 'none', height: '80px', fontFamily: 'inherit' }} 
+                value={form.shop_address} 
+                onChange={e => setForm({...form, shop_address: e.target.value})} 
+              />
               
               <select style={{...inputStyle, cursor: 'pointer'}} value={form.shop_type} onChange={e => setForm({...form, shop_type: e.target.value})}>
                 <option value="clinic">Clinic</option>
@@ -344,7 +357,7 @@ const AuthScreen = () => {
               </div>
               <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900', letterSpacing: '-0.5px' }}>Under Review</h2>
               <p style={{ color: '#8E8E93', fontSize: '15px', textAlign: 'center', lineHeight: '1.5', margin: '0 0 20px 0', fontWeight: '500' }}>
-                Your documents are being verified. Once approved, you will be able to start your queue.
+                Your documents and address are being verified. Once approved, you will be able to start your queue.
               </p>
 
               <div style={{ background: '#F2F2F7', padding: '8px 16px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>

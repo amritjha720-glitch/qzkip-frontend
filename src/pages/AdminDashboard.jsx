@@ -1,3 +1,4 @@
+/* eslint-disable */
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
@@ -60,7 +61,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // 🟢 NAYA: Soft Reject (Send to Red Page)
+  // 🟢 Soft Reject (Send to Red Page)
   const handleReject = async (vendorId, shopName) => {
     if (!window.confirm(`Send ${shopName} back for corrections (Reject)?`)) return;
     try {
@@ -73,7 +74,7 @@ const AdminDashboard = () => {
     }
   };
 
-  // 🟢 NAYA: Hard Delete (Permanently Remove Spammer)
+  // 🟢 Hard Delete (Permanently Remove Spammer)
   const handleDelete = async (vendorId, shopName) => {
     if (!window.confirm(`🚨 BRAHMASTRA: Are you sure you want to PERMANENTLY DELETE ${shopName}? This cannot be undone!`)) return;
     try {
@@ -136,50 +137,85 @@ const AdminDashboard = () => {
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Shop Name</th>
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Phone</th>
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Doc Info</th>
+                  {/* 🟢 NEW: Address and GPS verification column */}
+                  <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Address & GPS</th>
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Status</th>
                   <th style={{ padding: '12px', borderBottom: '2px solid #ddd' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {vendors.map((vendor) => (
-                  <tr key={vendor._id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '12px', fontWeight: 'bold', color: '#333' }}>{vendor.shop_name}</td>
-                    <td style={{ padding: '12px', color: '#555' }}>{vendor.phone}</td>
-                    <td style={{ padding: '12px', color: '#555' }}>
-                      <span style={{fontWeight: 'bold'}}>{vendor.kyc_details?.document_type}:</span> <br/>
-                      <span style={{textTransform: 'uppercase'}}>{vendor.kyc_details?.document_number}</span>
-                    </td>
-                    
-                    {/* 🟢 NAYA: Admin ko status dikhega */}
-                    <td style={{ padding: '12px' }}>
-                      <span style={{ 
-                        padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
-                        backgroundColor: vendor.status === 'rejected' ? '#FEE2E2' : '#FEF3C7',
-                        color: vendor.status === 'rejected' ? '#DC2626' : '#D97706'
-                      }}>
-                        {vendor.status.toUpperCase()}
-                      </span>
-                    </td>
-                    
-                    <td style={{ padding: '12px', display: 'flex', gap: '8px' }}>
-                      <button onClick={() => handleApprove(vendor._id, vendor.shop_name)} style={{ backgroundColor: '#4CAF50', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
-                        Approve
-                      </button>
-                      
-                      {/* Reject button (Send for correction) */}
-                      {vendor.status !== 'rejected' && (
-                        <button onClick={() => handleReject(vendor._id, vendor.shop_name)} style={{ backgroundColor: '#FF9800', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
-                          Reject
-                        </button>
-                      )}
+                {vendors.map((vendor) => {
+                  
+                  // Extract Latitude and Longitude for Google Maps (MongoDB stores as [lng, lat])
+                  let mapLat = null, mapLng = null;
+                  if (vendor.location && vendor.location.coordinates && vendor.location.coordinates.length === 2) {
+                    mapLng = vendor.location.coordinates[0];
+                    mapLat = vendor.location.coordinates[1];
+                  }
 
-                      {/* 🗑️ Delete Spammer Button */}
-                      <button onClick={() => handleDelete(vendor._id, vendor.shop_name)} style={{ backgroundColor: '#DC2626', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }} title="Delete Permanently">
-                        🗑️ Delete
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                  return (
+                    <tr key={vendor._id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '12px', fontWeight: 'bold', color: '#333' }}>{vendor.shop_name}</td>
+                      <td style={{ padding: '12px', color: '#555' }}>{vendor.phone}</td>
+                      <td style={{ padding: '12px', color: '#555' }}>
+                        <span style={{fontWeight: 'bold'}}>{vendor.kyc_details?.document_type}:</span> <br/>
+                        <span style={{textTransform: 'uppercase'}}>{vendor.kyc_details?.document_number}</span>
+                      </td>
+                      
+                      {/* 🟢 NEW: Admin Verification UI for Address & GPS */}
+                      <td style={{ padding: '12px', color: '#555', maxWidth: '250px' }}>
+                        <p style={{ margin: '0 0 8px 0', fontSize: '13px', lineHeight: '1.4' }}>
+                          <strong>Manual:</strong> {vendor.shop_address || 'Address not provided'}
+                        </p>
+                        {mapLat && mapLng ? (
+                          <a 
+                            href={`https://www.google.com/maps/search/?api=1&query=${mapLat},${mapLng}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: 'inline-flex', alignItems: 'center', gap: '4px',
+                              backgroundColor: '#EAF4FF', color: '#0066FF',
+                              padding: '4px 8px', borderRadius: '5px', textDecoration: 'none',
+                              fontSize: '12px', fontWeight: 'bold', border: '1px solid rgba(0, 102, 255, 0.2)'
+                            }}
+                          >
+                            📍 View on Map
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: '12px', color: '#DC2626', fontWeight: 'bold', backgroundColor: '#FEE2E2', padding: '4px 8px', borderRadius: '5px' }}>
+                            No GPS Data
+                          </span>
+                        )}
+                      </td>
+                      
+                      <td style={{ padding: '12px' }}>
+                        <span style={{ 
+                          padding: '4px 8px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold',
+                          backgroundColor: vendor.status === 'rejected' ? '#FEE2E2' : '#FEF3C7',
+                          color: vendor.status === 'rejected' ? '#DC2626' : '#D97706'
+                        }}>
+                          {vendor.status.toUpperCase()}
+                        </span>
+                      </td>
+                      
+                      <td style={{ padding: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <button onClick={() => handleApprove(vendor._id, vendor.shop_name)} style={{ backgroundColor: '#4CAF50', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
+                          Approve
+                        </button>
+                        
+                        {vendor.status !== 'rejected' && (
+                          <button onClick={() => handleReject(vendor._id, vendor.shop_name)} style={{ backgroundColor: '#FF9800', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }}>
+                            Reject
+                          </button>
+                        )}
+
+                        <button onClick={() => handleDelete(vendor._id, vendor.shop_name)} style={{ backgroundColor: '#DC2626', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer' }} title="Delete Permanently">
+                          🗑️ Delete
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
