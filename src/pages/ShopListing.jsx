@@ -58,7 +58,6 @@ const ShopListing = () => {
   };
 
   const requestLocation = (forceNew = false) => {
-    // 🟢 Agar forceNew nahi hai, toh pehle Cache check karo
     if (!forceNew) {
       const cached = getCachedLocation();
       if (cached) {
@@ -81,7 +80,7 @@ const ShopListing = () => {
       (position) => {
         const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
         locationCoordsRef.current = coords;
-        setCachedLocation(coords); // Save to LocalStorage
+        setCachedLocation(coords); 
         setLocationStatus('found');
         fetchShops(); 
       },
@@ -208,6 +207,50 @@ const ShopListing = () => {
           .google-maps-btn:hover {
             background: #D6EAFF;
           }
+          
+          /* 🟢 PREMIUM PILL STYLES FOR LOCATION BADGE */
+          .loc-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s ease;
+          }
+          .loc-badge.success {
+            background: rgba(255, 214, 10, 0.15);
+            border: 1px solid rgba(255, 214, 10, 0.3);
+            color: #FFD60A; /* Premium Vibrant Yellow */
+          }
+          .loc-badge.loading {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.9);
+          }
+          .loc-badge.error {
+            background: rgba(255, 69, 58, 0.15);
+            border: 1px solid rgba(255, 69, 58, 0.3);
+            color: #FF453A;
+            cursor: pointer;
+          }
+          
+          /* Blinking Dot for Locating */
+          .pulse-dot {
+            width: 6px;
+            height: 6px;
+            background-color: currentColor;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite ease-in-out;
+          }
+          @keyframes pulse {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.8); opacity: 0.5; }
+          }
         `}</style>
 
         <CustomPopup config={popup} setConfig={setPopup} />
@@ -216,7 +259,7 @@ const ShopListing = () => {
         <div className="smart-header">
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <div
                 onClick={() => navigate('/')}
                 style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
@@ -232,21 +275,22 @@ const ShopListing = () => {
               </button>
             </div>
             
-            {/* 🟢 ZOMATO STYLE LOCATION BANNER */}
-            <div style={{ margin: '-5px 0 20px 40px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {locationStatus === 'locating' && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: '500' }}>📍 Locating you...</p>}
+            {/* 🟢 NEW PREMIUM LOCATION BADGE UI */}
+            <div style={{ margin: '0 0 20px 38px', display: 'flex', alignItems: 'center' }}>
+              {locationStatus === 'locating' && (
+                <div className="loc-badge loading">
+                  <div className="pulse-dot"></div> Locating you...
+                </div>
+              )}
               {(locationStatus === 'found' || locationStatus === 'cached') && (
-                <p style={{ fontSize: '13px', color: '#10E671', margin: 0, fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <MapPin size={14} /> Showing nearby shops
-                </p>
+                <div className="loc-badge success">
+                  <MapPin size={12} strokeWidth={2.5} /> Showing nearby shops
+                </div>
               )}
               {locationStatus === 'denied' && (
-                <p 
-                  onClick={() => requestLocation(true)} 
-                  style={{ fontSize: '13px', color: '#FFD60A', margin: 0, fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
-                >
-                  📍 Location disabled. Tap to retry.
-                </p>
+                <div className="loc-badge error" onClick={() => requestLocation(true)}>
+                  <MapPin size={12} strokeWidth={2.5} /> Location disabled. Tap to retry.
+                </div>
               )}
             </div>
 
@@ -350,7 +394,7 @@ const ShopListing = () => {
                               href={`https://www.google.com/maps/dir/?api=1&destination=${mapLat},${mapLng}`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()} // 🔥 IMPORTANT: Stop click from opening token page
+                              onClick={(e) => e.stopPropagation()} 
                               className="google-maps-btn"
                             >
                               <Navigation size={12} /> {shop.distance}
