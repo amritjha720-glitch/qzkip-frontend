@@ -1,6 +1,5 @@
 /* eslint-disable */
-import React, { useState, useEffect } from 'react';
-
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
@@ -22,16 +21,68 @@ const ShopListing = () => {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  useEffect(() => {
-    const fetchShops = () => {
-      axios.get(`${QUEUE_URL}/all-shops`)
-        .then(res => { setShops(res.data.shops); setLoading(false); })
-        .catch(() => setLoading(false));
-    };
+  // 🟢 PHASE 4: GPS Location States
+  const [locationStatus, setLocationStatus] = useState('locating'); // 'locating', 'found', 'denied'
+  const locationCoordsRef = useRef(null); // Ref used to prevent stale closures in Socket
 
-    fetchShops();
+  const fetchShops = () => {
+    let url = `${QUEUE_URL}/all-shops`;
+    
+    // 🟢 AGAR LOCATION HAI, TOH API KO BHEJO
+    if (locationCoordsRef.current) {
+      const { lat, lng } = locationCoordsRef.current;
+      url += `?lat=${lat}&lng=${lng}`;
+    }
+
+    axios.get(url)
+      .then(res => { setShops(res.data.shops); setLoading(false); })
+      .catch(() => setLoading(false));
+  };
+
+  const requestLocation = () => {
+    setLocationStatus('locating');
+    
+    if (!navigator.geolocation) {
+      setLocationStatus('denied');
+      fetchShops(); // Fallback: Fetch all shops without location
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        locationCoordsRef.current = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        setLocationStatus('found');
+        fetchShops(); // Fetch shops with Geo-Filter
+      },
+      (error) => {
+        console.error("Location error:", error);
+        setLocationStatus('denied');
+        fetchShops(); // Fallback
+        
+        // 🟢 CUSTOM POPUP: Agar user location block kare
+        if (error.code === error.PERMISSION_DENIED) {
+          setPopup({ 
+            isOpen: true, 
+            title: 'Location Disabled', 
+            message: 'For the best experience and to see shops near you, please allow location access in your browser settings.', 
+            type: 'alert', 
+            confirmText: 'Got It' 
+          });
+        }
+      },
+      { enableHighAccuracy: true, timeout: 6000 }
+    );
+  };
+
+  useEffect(() => {
+    // 🟢 On Mount: Ask for location first
+    requestLocation();
+
     const socket = io('https://qzkip-backend.onrender.com');
-    socket.onAny(() => fetchShops());
+    socket.onAny(() => fetchShops()); // Ref ensures this always has latest location
     return () => socket.disconnect();
   }, []);
 
@@ -139,7 +190,20 @@ const ShopListing = () => {
                 ☰
               </button>
             </div>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.9)', margin: '-5px 0 20px 40px', fontWeight: '500' }}>Find a shop & join the queue.</p>
+            
+            {/* 🟢 ZOMATO STYLE LOCATION BANNER */}
+            <div style={{ margin: '-5px 0 20px 40px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {locationStatus === 'locating' && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: '500' }}>📍 Finding shops near you...</p>}
+              {locationStatus === 'found' && <p style={{ fontSize: '13px', color: '#10E671', margin: 0, fontWeight: '700' }}>📍 Showing nearest shops</p>}
+              {locationStatus === 'denied' && (
+                <p 
+                  onClick={requestLocation} 
+                  style={{ fontSize: '13px', color: '#FFD60A', margin: 0, fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  📍 Location disabled. Tap to allow.
+                </p>
+              )}
+            </div>
 
             <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '30px', padding: '14px 20px', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
               <Search size={20} color="#A0A0A0" style={{ marginRight: '12px' }} />
@@ -227,7 +291,7 @@ const ShopListing = () => {
       ID: <span style={{ color: '#555' }}>{shop.qr_id}</span>
     </p>
 
-    {/* Category Tag moved to the bottom */}
+    {/* Category Tag */}
     <span style={{ 
       fontSize: '11px', 
       fontWeight: '800', 
@@ -244,7 +308,7 @@ const ShopListing = () => {
     </span>
   </div>
 
-  {/* Right: Live Queue Badge & Wait Time */}
+  {/* Right: Live Queue Badge, Wait Time & 📍 DISTANCE */}
   <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
     {isClosed ? (
       <span style={{ 
@@ -279,6 +343,13 @@ const ShopListing = () => {
         <span style={{ fontSize: '11px', color: '#8E8E93', fontWeight: '700' }}>
           ~{estimatedWait} min wait
         </span>
+        
+        {/* 🟢 DISTANCE UI (Only renders if location is enabled and distance exists) */}
+        {shop.distance && (
+          <span style={{ fontSize: '11px', color: '#A86423', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '6px', background: '#FDF8F2', padding: '2px 6px', borderRadius: '4px' }}>
+            📍 {shop.distance}
+          </span>
+        )}
       </>
     )}
   </div>
