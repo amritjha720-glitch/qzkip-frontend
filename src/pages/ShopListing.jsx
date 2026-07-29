@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { Search, Scissors, Stethoscope, Monitor, Store } from 'lucide-react';
+import { Search, Scissors, Stethoscope, Monitor, Store, Navigation, MapPin } from 'lucide-react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 
 import CustomPopup from '../components/CustomPopup';
@@ -11,6 +11,25 @@ import GlobalSidebar from '../components/GlobalSidebar';
 import SmartLogo from '../components/SmartLogo';
 
 const QUEUE_URL = 'https://qzkip-backend.onrender.com/api/queue';
+
+// 🟢 CACHING LOGIC: 1 Ghante (1 Hour) ke liye location save karenge
+const CACHE_KEY = 'qzkip_user_location';
+const CACHE_TIME_KEY = 'qzkip_loc_timestamp';
+const EXPIRY_MS = 60 * 60 * 1000; // 1 Hour
+
+const getCachedLocation = () => {
+  const loc = localStorage.getItem(CACHE_KEY);
+  const time = localStorage.getItem(CACHE_TIME_KEY);
+  if (loc && time && (Date.now() - parseInt(time) < EXPIRY_MS)) {
+    return JSON.parse(loc);
+  }
+  return null;
+};
+
+const setCachedLocation = (coords) => {
+  localStorage.setItem(CACHE_KEY, JSON.stringify(coords));
+  localStorage.setItem(CACHE_TIME_KEY, Date.now().toString());
+};
 
 const ShopListing = () => {
   const navigate = useNavigate();
@@ -21,14 +40,13 @@ const ShopListing = () => {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // 🟢 PHASE 4: GPS Location States
-  const [locationStatus, setLocationStatus] = useState('locating'); // 'locating', 'found', 'denied'
-  const locationCoordsRef = useRef(null); // Ref used to prevent stale closures in Socket
+  // 'locating', 'found', 'denied', 'cached'
+  const [locationStatus, setLocationStatus] = useState('locating'); 
+  const locationCoordsRef = useRef(null); 
 
   const fetchShops = () => {
     let url = `${QUEUE_URL}/all-shops`;
     
-    // 🟢 AGAR LOCATION HAI, TOH API KO BHEJO
     if (locationCoordsRef.current) {
       const { lat, lng } = locationCoordsRef.current;
       url += `?lat=${lat}&lng=${lng}`;
@@ -39,35 +57,44 @@ const ShopListing = () => {
       .catch(() => setLoading(false));
   };
 
-  const requestLocation = () => {
+  const requestLocation = (forceNew = false) => {
+    // 🟢 Agar forceNew nahi hai, toh pehle Cache check karo
+    if (!forceNew) {
+      const cached = getCachedLocation();
+      if (cached) {
+        locationCoordsRef.current = cached;
+        setLocationStatus('cached');
+        fetchShops();
+        return;
+      }
+    }
+
     setLocationStatus('locating');
     
     if (!navigator.geolocation) {
       setLocationStatus('denied');
-      fetchShops(); // Fallback: Fetch all shops without location
+      fetchShops(); 
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        locationCoordsRef.current = {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude
-        };
+        const coords = { lat: position.coords.latitude, lng: position.coords.longitude };
+        locationCoordsRef.current = coords;
+        setCachedLocation(coords); // Save to LocalStorage
         setLocationStatus('found');
-        fetchShops(); // Fetch shops with Geo-Filter
+        fetchShops(); 
       },
       (error) => {
         console.error("Location error:", error);
         setLocationStatus('denied');
-        fetchShops(); // Fallback
+        fetchShops(); 
         
-        // 🟢 CUSTOM POPUP: Agar user location block kare
-        if (error.code === error.PERMISSION_DENIED) {
+        if (error.code === error.PERMISSION_DENIED && forceNew) {
           setPopup({ 
             isOpen: true, 
             title: 'Location Disabled', 
-            message: 'For the best experience and to see shops near you, please allow location access in your browser settings.', 
+            message: 'Please allow location access in your browser settings to find shops near you.', 
             type: 'alert', 
             confirmText: 'Got It' 
           });
@@ -78,11 +105,10 @@ const ShopListing = () => {
   };
 
   useEffect(() => {
-    // 🟢 On Mount: Ask for location first
-    requestLocation();
+    requestLocation(false);
 
     const socket = io('https://qzkip-backend.onrender.com');
-    socket.onAny(() => fetchShops()); // Ref ensures this always has latest location
+    socket.onAny(() => fetchShops()); 
     return () => socket.disconnect();
   }, []);
 
@@ -144,11 +170,9 @@ const ShopListing = () => {
       <Helmet>
         <title>Qzkip</title>
         <meta name="description" content="Search for top-rated clinics, hospitals, and barber shops. Check live queue status and book your digital token instantly." />
-        <meta name="keywords" content="Qzkip, clinics near me, salon queue, live token tracking, digital queue" />
       </Helmet>
 
       <div style={{ minHeight: '100vh', background: '#F8F7F3', paddingBottom: '0' }}>
-
         <style>{`
           #root { max-width: 100% !important; padding: 0 !important; margin: 0 !important; width: 100% !important; }
           body { margin: 0; padding: 0; width: 100%;  }
@@ -166,6 +190,23 @@ const ShopListing = () => {
               border-bottom-right-radius: 40px;
               padding: 15px 20px 25px 20px;
             }
+          }
+          .google-maps-btn {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            background: #EAF4FF;
+            color: #0066FF;
+            border: 1px solid rgba(0, 102, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-decoration: none;
+            transition: all 0.2s ease;
+          }
+          .google-maps-btn:hover {
+            background: #D6EAFF;
           }
         `}</style>
 
@@ -193,14 +234,18 @@ const ShopListing = () => {
             
             {/* 🟢 ZOMATO STYLE LOCATION BANNER */}
             <div style={{ margin: '-5px 0 20px 40px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-              {locationStatus === 'locating' && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: '500' }}>📍 Finding shops near you...</p>}
-              {locationStatus === 'found' && <p style={{ fontSize: '13px', color: '#10E671', margin: 0, fontWeight: '700' }}>📍 Showing nearest shops</p>}
+              {locationStatus === 'locating' && <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.9)', margin: 0, fontWeight: '500' }}>📍 Locating you...</p>}
+              {(locationStatus === 'found' || locationStatus === 'cached') && (
+                <p style={{ fontSize: '13px', color: '#10E671', margin: 0, fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <MapPin size={14} /> Showing nearby shops
+                </p>
+              )}
               {locationStatus === 'denied' && (
                 <p 
-                  onClick={requestLocation} 
+                  onClick={() => requestLocation(true)} 
                   style={{ fontSize: '13px', color: '#FFD60A', margin: 0, fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
                 >
-                  📍 Location disabled. Tap to allow.
+                  📍 Location disabled. Tap to retry.
                 </p>
               )}
             </div>
@@ -234,126 +279,109 @@ const ShopListing = () => {
                   const shopStyle = getShopIcon(shop.shop_type);
                   const estimatedWait = totalInLine * (shop.avgTime || 5);
 
+                  // 🟢 Extract Coordinates for Google Maps
+                  let mapLat = null, mapLng = null;
+                  if (shop.location && shop.location.coordinates) {
+                    mapLng = shop.location.coordinates[0];
+                    mapLat = shop.location.coordinates[1];
+                  }
+
                   return (
                     <div 
-  key={shop._id} 
-  onClick={() => !isClosed && handleShopClick(shop.qr_id)} 
-  style={{ 
-    background: isClosed ? '#F8F9FA' : '#ffffff', 
-    cursor: isClosed ? 'not-allowed' : 'pointer', 
-    padding: '18px', 
-    boxShadow: isClosed ? 'none' : '0 10px 30px rgba(0,0,0,0.06)', 
-    borderRadius: '24px', 
-    display: 'flex', 
-    alignItems: 'center', 
-    opacity: isClosed ? 0.65 : 1, 
-    transition: 'all 0.25s ease', 
-    border: isClosed ? '1px solid #E5E5EA' : '1px solid rgba(168, 100, 35, 0.12)',
-    marginBottom: '16px',
-    position: 'relative',
-    overflow: 'hidden'
-  }}
->
-  {/* Left: Icon Box */}
-  <div style={{ 
-    width: '68px', 
-    height: '68px', 
-    borderRadius: '20px', 
-    background: isClosed ? '#E5E5EA' : shopStyle.bg, 
-    display: 'flex', 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    marginRight: '16px', 
-    flexShrink: 0,
-    boxShadow: isClosed ? 'none' : '0 6px 15px rgba(168, 100, 35, 0.1)'
-  }}>
-    {shopStyle.icon}
-  </div>
+                      key={shop._id} 
+                      onClick={() => !isClosed && handleShopClick(shop.qr_id)} 
+                      style={{ 
+                        background: isClosed ? '#F8F9FA' : '#ffffff', 
+                        cursor: isClosed ? 'not-allowed' : 'pointer', 
+                        padding: '18px', 
+                        boxShadow: isClosed ? 'none' : '0 10px 30px rgba(0,0,0,0.06)', 
+                        borderRadius: '24px', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        opacity: isClosed ? 0.65 : 1, 
+                        transition: 'all 0.25s ease', 
+                        border: isClosed ? '1px solid #E5E5EA' : '1px solid rgba(168, 100, 35, 0.12)',
+                        marginBottom: '16px',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      {/* Left: Icon Box */}
+                      <div style={{ 
+                        width: '68px', 
+                        height: '68px', 
+                        borderRadius: '20px', 
+                        background: isClosed ? '#E5E5EA' : shopStyle.bg, 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        marginRight: '16px', 
+                        flexShrink: 0,
+                        boxShadow: isClosed ? 'none' : '0 6px 15px rgba(168, 100, 35, 0.1)'
+                      }}>
+                        {shopStyle.icon}
+                      </div>
 
-  {/* Middle: Shop Name, ID & Type Tag at Bottom */}
-  <div style={{ flex: 1, minWidth: 0, marginRight: '12px' }}>
-    <h4 style={{ 
-      margin: '0 0 4px 0', 
-      color: '#1A1A2E', 
-      fontSize: '17px', 
-      fontWeight: '800', 
-      display: '-webkit-box',
-      WebkitLineClamp: '1',
-      WebkitBoxOrient: 'vertical',
-      overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      letterSpacing: '-0.3px'
-    }}>
-      {shop.shop_name}
-    </h4>
-    
-    <p style={{ fontSize: '12px', color: '#8E8E93', margin: '0 0 6px 0', fontWeight: '600' }}>
-      ID: <span style={{ color: '#555' }}>{shop.qr_id}</span>
-    </p>
+                      {/* Middle: Shop Details */}
+                      <div style={{ flex: 1, minWidth: 0, marginRight: '8px' }}>
+                        <h4 style={{ 
+                          margin: '0 0 4px 0', color: '#1A1A2E', fontSize: '17px', fontWeight: '800', 
+                          display: '-webkit-box', WebkitLineClamp: '1', WebkitBoxOrient: 'vertical', 
+                          overflow: 'hidden', textOverflow: 'ellipsis', letterSpacing: '-0.3px'
+                        }}>
+                          {shop.shop_name}
+                        </h4>
+                        
+                        <p style={{ fontSize: '12px', color: '#8E8E93', margin: '0 0 8px 0', fontWeight: '600' }}>
+                          ID: <span style={{ color: '#555' }}>{shop.qr_id}</span>
+                        </p>
 
-    {/* Category Tag */}
-    <span style={{ 
-      fontSize: '11px', 
-      fontWeight: '800', 
-      textTransform: 'uppercase', 
-      letterSpacing: '0.5px',
-      color: '#A86423',
-      background: '#FDF8F2',
-      padding: '2px 8px',
-      borderRadius: '6px',
-      display: 'inline-block',
-      border: '1px solid rgba(168, 100, 35, 0.1)'
-    }}>
-      {shop.shop_type || 'Shop'}
-    </span>
-  </div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <span style={{ 
+                            fontSize: '11px', fontWeight: '800', textTransform: 'uppercase', color: '#A86423',
+                            background: '#FDF8F2', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(168, 100, 35, 0.1)'
+                          }}>
+                            {shop.shop_type || 'Shop'}
+                          </span>
 
-  {/* Right: Live Queue Badge, Wait Time & 📍 DISTANCE */}
-  <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
-    {isClosed ? (
-      <span style={{ 
-        background: '#E5E5EA', 
-        color: '#8E8E93', 
-        padding: '6px 14px', 
-        borderRadius: '12px', 
-        fontSize: '11px', 
-        fontWeight: '800',
-        letterSpacing: '0.5px'
-      }}>
-        CLOSED
-      </span>
-    ) : (
-      <>
-        <div style={{ 
-          background: '#E8F8F0', 
-          color: '#10B981', 
-          padding: '6px 12px', 
-          borderRadius: '12px', 
-          fontSize: '12px', 
-          fontWeight: '800', 
-          marginBottom: '6px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
-        }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
-          {totalInLine} in line
-        </div>
-        <span style={{ fontSize: '11px', color: '#8E8E93', fontWeight: '700' }}>
-          ~{estimatedWait} min wait
-        </span>
-        
-        {/* 🟢 DISTANCE UI (Only renders if location is enabled and distance exists) */}
-        {shop.distance && (
-          <span style={{ fontSize: '11px', color: '#A86423', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '3px', marginTop: '6px', background: '#FDF8F2', padding: '2px 6px', borderRadius: '4px' }}>
-            📍 {shop.distance}
-          </span>
-        )}
-      </>
-    )}
-  </div>
-</div>
+                          {/* 🟢 DISTANCE UI WITH GOOGLE MAPS LINK */}
+                          {shop.distance && mapLat && mapLng && (
+                            <a 
+                              href={`https://www.google.com/maps/dir/?api=1&destination=${mapLat},${mapLng}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()} // 🔥 IMPORTANT: Stop click from opening token page
+                              className="google-maps-btn"
+                            >
+                              <Navigation size={12} /> {shop.distance}
+                            </a>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Right: Live Queue Badge */}
+                      <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
+                        {isClosed ? (
+                          <span style={{ background: '#E5E5EA', color: '#8E8E93', padding: '6px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>
+                            CLOSED
+                          </span>
+                        ) : (
+                          <>
+                            <div style={{ 
+                              background: '#E8F8F0', color: '#10B981', padding: '6px 12px', borderRadius: '12px', 
+                              fontSize: '12px', fontWeight: '800', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '5px',
+                              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.1)'
+                            }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10B981', display: 'inline-block' }}></span>
+                              {totalInLine} in line
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#8E8E93', fontWeight: '700' }}>
+                              ~{estimatedWait} min wait
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
               </div>
@@ -365,55 +393,11 @@ const ShopListing = () => {
             </button>
           </div>
 
-          {/* Emotional Footer */}
           <div className="bottom-footer">
-            <p className="footer-quote">
-              "Waqt bahut keemti hai.<br /> Ise line mein nahi, apno ke saath bitayein."
-            </p>
-            <p className="footer-made-with">
-              Made with ❤️ in India
-            </p>
-          </div>
-
-        </div>
-
-        {/* 🚀 Clean Dark Blue Footer */}
-        <div className="fat-footer-dark">
-          <div className="footer-top-row">
-            <div className="footer-brand">
-              <SmartLogo size={36} />
-              <h2>Qzkip</h2>
-            </div>
-          </div>
-
-          <div className="footer-links-grid">
-            <div className="footer-column">
-              <h3>Services</h3>
-              <p>Clinics & Hospitals</p>
-              <p>Salons & Spas</p>
-              <p>Cyber Cafes</p>
-            </div>
-
-            <div className="footer-column">
-              <h3>For Vendors</h3>
-              <p onClick={() => navigate('/vendor-login')}>Shop Owner Login</p>
-              <p>List Your Business</p>
-            </div>
-
-            <div className="footer-column">
-              <h3>Connect</h3>
-              <p>Facebook</p>
-              <p>Instagram</p>
-              <p>LinkedIn</p>
-            </div>
-
-            <div className="footer-column">
-              <h3>About</h3>
-              <p>Contact Us</p>
-            </div>
+            <p className="footer-quote">"Waqt bahut keemti hai.<br /> Ise line mein nahi, apno ke saath bitayein."</p>
+            <p className="footer-made-with">Made with ❤️ in India</p>
           </div>
         </div>
-
       </div>
     </HelmetProvider>
   );

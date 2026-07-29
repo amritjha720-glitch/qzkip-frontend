@@ -14,6 +14,7 @@ const AuthScreen = () => {
   
   const [step, setStep] = useState('LOGIN'); 
   const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState({ isOpen: false }); // 🟢 FIXED: Added missing Popup State
   
   const [googleData, setGoogleData] = useState(() => {
     const savedData = localStorage.getItem('vendorGoogleData');
@@ -28,8 +29,8 @@ const AuthScreen = () => {
     shop_type: 'clinic' 
   });
 
-  // 🟢 PHASE 2: Vendor Location States
-  const [locationStatus, setLocationStatus] = useState('idle'); // 'locating', 'found', 'denied'
+  // 🟢 Vendor Location States
+  const [locationStatus, setLocationStatus] = useState('idle'); 
   const [coords, setCoords] = useState(null);
 
   const config = { withCredentials: true };
@@ -38,25 +39,39 @@ const AuthScreen = () => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
+  // 🟢 FEATURE: Reusable Location Request Function
+  const requestLocation = () => {
+    setLocationStatus('locating');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setLocationStatus('found');
+        },
+        (err) => {
+          console.error("Location access denied by vendor:", err);
+          setLocationStatus('denied');
+          if (err.code === err.PERMISSION_DENIED) {
+            setPopup({ 
+              isOpen: true, 
+              title: 'Location Disabled', 
+              message: 'Please allow location so customers can navigate to your shop via Google Maps.', 
+              type: 'alert', 
+              confirmText: 'Got It' 
+            });
+          }
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    } else {
+      setLocationStatus('denied');
+    }
+  };
+
   // 🟢 MAGICAL TRICK: Form khulte hi location maang lo
   useEffect(() => {
     if (step === 'FORM') {
-      setLocationStatus('locating');
-      if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-            setLocationStatus('found');
-          },
-          (err) => {
-            console.error("Location access denied by vendor:", err);
-            setLocationStatus('denied');
-          },
-          { enableHighAccuracy: true, timeout: 6000 }
-        );
-      } else {
-        setLocationStatus('denied');
-      }
+      requestLocation();
     }
   }, [step]);
 
@@ -106,7 +121,7 @@ const AuthScreen = () => {
     } catch (e) {
       if (e.code !== 'auth/popup-closed-by-user') {
         console.error("Login Error:", e);
-        alert("Google login failed. Please try again.");
+        setPopup({ isOpen: true, title: 'Login Failed', message: 'Google login failed. Please try again.', type: 'alert', confirmText: 'OK' });
       }
     } finally {
       setLoading(false);
@@ -118,7 +133,7 @@ const AuthScreen = () => {
   // ==========================================
   const handleFormSubmit = async () => {
     if (form.phone.length !== 10 || !form.shop_name || !form.document_number) {
-      return alert("All fields are required!");
+      return setPopup({ isOpen: true, title: 'Missing Fields', message: 'Please fill out all the fields correctly!', type: 'alert', confirmText: 'OK' });
     }
     
     setLoading(true);
@@ -139,9 +154,9 @@ const AuthScreen = () => {
       }
     } catch (e) {
       if (e.response?.data?.errors) {
-        alert("Validation Error:\n" + e.response.data.errors.join('\n'));
+        setPopup({ isOpen: true, title: 'Validation Error', message: e.response.data.errors.join('\n'), type: 'alert', confirmText: 'OK' });
       } else {
-        alert(e.response?.data?.message || "Registration failed!");
+        setPopup({ isOpen: true, title: 'Error', message: e.response?.data?.message || "Registration failed!", type: 'alert', confirmText: 'OK' });
       }
     } finally {
       setLoading(false);
@@ -207,6 +222,8 @@ const AuthScreen = () => {
   return (
     <div style={{ minHeight: '100vh', background: '#F8F7F3', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
       
+      <CustomPopup config={popup} setConfig={setPopup} /> {/* 🟢 FIXED: Added Popup Component */}
+
       {/* GLOBAL BRANDING HEADER */}
       <div style={{ 
         width: '100%', background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', 
@@ -268,11 +285,23 @@ const AuthScreen = () => {
                 <p style={{ margin: 0, color: '#8E8E93', fontSize: '13px', fontWeight: '500' }}>Setup your shop details to get started</p>
               </div>
               
-              {/* 🟢 LOCATION STATUS INDICATOR FOR VENDOR */}
-              <div style={{ marginBottom: '15px', padding: '10px', borderRadius: '12px', background: locationStatus === 'denied' ? '#FEF2F2' : '#F0FDF4', border: `1px solid ${locationStatus === 'denied' ? '#FECACA' : '#BBF7D0'}`, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {/* 🟢 INTERACTIVE LOCATION STATUS INDICATOR */}
+              <div style={{ 
+                marginBottom: '15px', padding: '12px', borderRadius: '12px', 
+                background: locationStatus === 'denied' ? '#FEF2F2' : '#F0FDF4', 
+                border: `1px solid ${locationStatus === 'denied' ? '#FECACA' : '#BBF7D0'}`, 
+                display: 'flex', alignItems: 'center', gap: '8px',
+                cursor: locationStatus === 'denied' ? 'pointer' : 'default' // Add pointer if denied
+              }}
+              onClick={() => locationStatus === 'denied' && requestLocation()} // Retry on click
+              >
                 {locationStatus === 'locating' && <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '600' }}>📍 Detecting shop location...</span>}
                 {locationStatus === 'found' && <span style={{ fontSize: '12px', color: '#15803D', fontWeight: '600' }}>📍 Exact shop location captured</span>}
-                {locationStatus === 'denied' && <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '600' }}>📍 Location denied. Your shop won't show in "Nearby" searches.</span>}
+                {locationStatus === 'denied' && (
+                  <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '600' }}>
+                    📍 Location denied. <span style={{textDecoration: 'underline'}}>Tap to retry</span> so customers can find you.
+                  </span>
+                )}
               </div>
 
               <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
