@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { io } from 'socket.io-client';
-import { Search, Scissors, Stethoscope, Monitor, Store, Navigation, MapPin } from 'lucide-react';
+import { Search, Scissors, Stethoscope, Monitor, Store, Navigation, MapPin, Menu as MenuIcon } from 'lucide-react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 
 import CustomPopup from '../components/CustomPopup';
@@ -12,7 +12,7 @@ import SmartLogo from '../components/SmartLogo';
 
 const QUEUE_URL = 'https://qzkip-backend.onrender.com/api/queue';
 
-// 🟢 CACHING LOGIC: 1 Ghante (1 Hour) ke liye location save karenge
+// 🟢 CACHING LOGIC
 const CACHE_KEY = 'qzkip_user_location';
 const CACHE_TIME_KEY = 'qzkip_loc_timestamp';
 const EXPIRY_MS = 60 * 60 * 1000; // 1 Hour
@@ -40,7 +40,6 @@ const ShopListing = () => {
   const [loading, setLoading] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // 'locating', 'found', 'denied', 'cached'
   const [locationStatus, setLocationStatus] = useState('locating'); 
   const locationCoordsRef = useRef(null); 
 
@@ -177,7 +176,7 @@ const ShopListing = () => {
           body { margin: 0; padding: 0; width: 100%;  }
           .smart-header {
             background: linear-gradient(135deg, #A86423 0%, #754B1A 100%);
-            padding: 15px 5% 25px 5%; 
+            padding: 20px 5% 25px 5%; 
             margin-bottom: 25px;
             box-shadow: 0 10px 30px rgba(117, 75, 26, 0.2);
             width: 100%;
@@ -187,7 +186,7 @@ const ShopListing = () => {
             .smart-header {
               border-bottom-left-radius: 40px;
               border-bottom-right-radius: 40px;
-              padding: 15px 20px 25px 20px;
+              padding: 20px 20px 25px 20px;
             }
           }
           .google-maps-btn {
@@ -212,14 +211,15 @@ const ShopListing = () => {
           .loc-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 5px;
             padding: 4px 12px;
             border-radius: 20px;
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 700;
             letter-spacing: 0.3px;
             backdrop-filter: blur(5px);
             transition: all 0.3s ease;
+            width: fit-content;
           }
           .loc-badge.success {
             background: rgba(255, 214, 10, 0.15);
@@ -238,7 +238,6 @@ const ShopListing = () => {
             cursor: pointer;
           }
           
-          /* Blinking Dot for Locating */
           .pulse-dot {
             width: 6px;
             height: 6px;
@@ -259,46 +258,50 @@ const ShopListing = () => {
         <div className="smart-header">
           <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div
-                onClick={() => navigate('/')}
-                style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-              >
-                <SmartLogo size={30} />
-                <h1 style={{ margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px' }}>Qzkip</h1>
+            {/* 🟢 TOP ROW: LOGO + PILL (LEFT) & MENU (RIGHT) */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '22px' }}>
+              
+              {/* Left Column: Qzkip Logo and Location Pill perfectly aligned vertically */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <SmartLogo size={30} />
+                  <h1 style={{ margin: 0, fontSize: '24px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px', lineHeight: '1' }}>Qzkip</h1>
+                </div>
+
+                {/* The Pill is now EXACTLY under the logo group */}
+                <div style={{ paddingLeft: '2px' }}>
+                  {locationStatus === 'locating' && (
+                    <div className="loc-badge loading">
+                      <div className="pulse-dot"></div> Locating you...
+                    </div>
+                  )}
+                  {(locationStatus === 'found' || locationStatus === 'cached') && (
+                    <div className="loc-badge success">
+                      <MapPin size={12} strokeWidth={2.5} /> Showing nearby shops
+                    </div>
+                  )}
+                  {locationStatus === 'denied' && (
+                    <div className="loc-badge error" onClick={() => requestLocation(true)}>
+                      <MapPin size={12} strokeWidth={2.5} /> Location disabled. Tap to retry.
+                    </div>
+                  )}
+                </div>
               </div>
-              <button
-                className="menu-icon-btn"
-                onClick={() => setIsSidebarOpen(true)}
-              >
-                ☰
+
+              {/* Right Column: Menu Icon */}
+              <button onClick={() => setIsSidebarOpen(true)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px', marginTop: '2px' }}>
+                <MenuIcon size={28} strokeWidth={2.5} />
               </button>
-            </div>
-            
-            {/* 🟢 NEW PREMIUM LOCATION BADGE UI */}
-            <div style={{ margin: '0 0 20px 38px', display: 'flex', alignItems: 'center' }}>
-              {locationStatus === 'locating' && (
-                <div className="loc-badge loading">
-                  <div className="pulse-dot"></div> Locating you...
-                </div>
-              )}
-              {(locationStatus === 'found' || locationStatus === 'cached') && (
-                <div className="loc-badge success">
-                  <MapPin size={12} strokeWidth={2.5} /> Showing nearby shops
-                </div>
-              )}
-              {locationStatus === 'denied' && (
-                <div className="loc-badge error" onClick={() => requestLocation(true)}>
-                  <MapPin size={12} strokeWidth={2.5} /> Location disabled. Tap to retry.
-                </div>
-              )}
+
             </div>
 
+            {/* Search Bar */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '30px', padding: '14px 20px', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
               <Search size={20} color="#A0A0A0" style={{ marginRight: '12px' }} />
               <input type="text" placeholder="Search for clinics, salons, etc..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '15px', color: '#1a1a2e', fontWeight: '500' }} />
             </div>
 
+            {/* Categories */}
             <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '5px', scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}>
               {categories.map(cat => {
                 const isActive = activeCategory === cat.name;
@@ -323,7 +326,6 @@ const ShopListing = () => {
                   const shopStyle = getShopIcon(shop.shop_type);
                   const estimatedWait = totalInLine * (shop.avgTime || 5);
 
-                  // 🟢 Extract Coordinates for Google Maps
                   let mapLat = null, mapLng = null;
                   if (shop.location && shop.location.coordinates) {
                     mapLng = shop.location.coordinates[0];
@@ -350,7 +352,6 @@ const ShopListing = () => {
                         overflow: 'hidden'
                       }}
                     >
-                      {/* Left: Icon Box */}
                       <div style={{ 
                         width: '68px', 
                         height: '68px', 
@@ -366,7 +367,6 @@ const ShopListing = () => {
                         {shopStyle.icon}
                       </div>
 
-                      {/* Middle: Shop Details */}
                       <div style={{ flex: 1, minWidth: 0, marginRight: '8px' }}>
                         <h4 style={{ 
                           margin: '0 0 4px 0', color: '#1A1A2E', fontSize: '17px', fontWeight: '800', 
@@ -388,7 +388,6 @@ const ShopListing = () => {
                             {shop.shop_type || 'Shop'}
                           </span>
 
-                          {/* 🟢 DISTANCE UI WITH GOOGLE MAPS LINK */}
                           {shop.distance && mapLat && mapLng && (
                             <a 
                               href={`https://www.google.com/maps/dir/?api=1&destination=${mapLat},${mapLng}`}
@@ -403,7 +402,6 @@ const ShopListing = () => {
                         </div>
                       </div>
 
-                      {/* Right: Live Queue Badge */}
                       <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', flexShrink: 0 }}>
                         {isClosed ? (
                           <span style={{ background: '#E5E5EA', color: '#8E8E93', padding: '6px 14px', borderRadius: '12px', fontSize: '11px', fontWeight: '800' }}>
@@ -437,9 +435,14 @@ const ShopListing = () => {
             </button>
           </div>
 
-          <div className="bottom-footer">
-            <p className="footer-quote">"Waqt bahut keemti hai.<br /> Ise line mein nahi, apno ke saath bitayein."</p>
-            <p className="footer-made-with">Made with ❤️ in India</p>
+          {/* 🟢 CLEAN FOOTER (Blue part removed) */}
+          <div className="bottom-footer" style={{ paddingBottom: '100px', textAlign: 'center' }}>
+            <p className="footer-quote" style={{ color: '#8E8E93', fontStyle: 'italic', fontSize: '14px', lineHeight: '1.6', marginBottom: '8px' }}>
+              "Waqt bahut keemti hai.<br /> Ise line mein nahi, apno ke saath bitayein."
+            </p>
+            <p className="footer-made-with" style={{ color: '#1A1A2E', fontWeight: '700', fontSize: '14px' }}>
+              Made with ❤️ in India
+            </p>
           </div>
         </div>
       </div>
