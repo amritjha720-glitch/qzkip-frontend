@@ -6,8 +6,32 @@ import { auth, googleProvider } from '../firebase';
 import { signInWithPopup, signOut } from 'firebase/auth'; 
 import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
+import { Helmet, HelmetProvider } from 'react-helmet-async';
+
+// 🟢 NEW: Leaflet Map Imports for Exact Pinpoint Location
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+
+// 🟢 FIX: Leaflet default marker icons in React
+const customIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
+
+// 🟢 NEW: Map Click Component (Allows user to move the pin exactly)
+const LocationPicker = ({ coords, setCoords }) => {
+  useMapEvents({
+    click(e) {
+      setCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+    }
+  });
+  return coords ? <Marker position={[coords.lat, coords.lng]} icon={customIcon} /> : null;
+};
 
 const AuthScreen = () => {
   const navigate = useNavigate();
@@ -24,13 +48,12 @@ const AuthScreen = () => {
   const [form, setForm] = useState({ 
     phone: '', 
     shop_name: '', 
-    shop_address: '', // 🟢 NEW: Manual Address Field
+    shop_address: '', // 🟢 Manual Address Field
     document_type: 'PAN',
     document_number: '',
     shop_type: 'clinic' 
   });
 
-  // 🟢 Vendor Location States
   const [locationStatus, setLocationStatus] = useState('idle'); 
   const [coords, setCoords] = useState(null);
 
@@ -74,9 +97,6 @@ const AuthScreen = () => {
     }
   }, [step]);
 
-  // ==========================================
-  // 1. GOOGLE LOGIN HANDLER 
-  // ==========================================
   const handleGoogleLogin = async (forceSelect = false) => {
     setLoading(true);
     try {
@@ -127,16 +147,22 @@ const AuthScreen = () => {
     }
   };
 
-  // ==========================================
-  // 2. KYC FORM SUBMIT HANDLER
-  // ==========================================
   const handleFormSubmit = async () => {
-    // 🟢 NEW: Manual Address Validation (at least 10 chars)
     if (form.phone.length !== 10 || !form.shop_name || !form.document_number || form.shop_address.trim().length < 10) {
       return setPopup({ 
         isOpen: true, 
         title: 'Missing Fields', 
         message: 'Please fill out all fields correctly. Ensure the shop address is complete.', 
+        type: 'alert', 
+        confirmText: 'OK' 
+      });
+    }
+
+    if (!coords) {
+      return setPopup({ 
+        isOpen: true, 
+        title: 'Location Missing', 
+        message: 'Please allow GPS access and pin your exact location on the map before submitting.', 
         type: 'alert', 
         confirmText: 'OK' 
       });
@@ -168,9 +194,6 @@ const AuthScreen = () => {
     }
   };
 
-  // ==========================================
-  // 3. SILENT STATUS CHECKER
-  // ==========================================
   const checkVerificationStatus = async () => {
     setLoading(true);
     try {
@@ -196,9 +219,6 @@ const AuthScreen = () => {
     }
   };
 
-  // ==========================================
-  // 4. LOGOUT & CHANGE ACCOUNT HANDLER
-  // ==========================================
   const handleLogout = async () => {
     await signOut(auth); 
     
@@ -225,198 +245,169 @@ const AuthScreen = () => {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F8F7F3', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-      
-      <CustomPopup config={popup} setConfig={setPopup} /> 
-
-      {/* GLOBAL BRANDING HEADER */}
-      <div style={{ 
-        width: '100%', background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', 
-        padding: '20px 24px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', boxSizing: 'border-box',
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-      }}>
-        <div 
-          onClick={() => navigate('/')} 
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-        >
-          <SmartLogo size={30} />
-          <h1 style={{margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px'}}>Qzkip</h1>
-        </div>
-        <span style={{ background: 'rgba(255,255,255,0.15)', color: '#F9F3EA', padding: '6px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700' }}>Vendor Portal</span>
-      </div>
-      
-      {/* Main Content Area */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+    <HelmetProvider>
+      <div style={{ minHeight: '100vh', background: '#F8F7F3', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
         
-        <div style={{ background: '#ffffff', width: '100%', maxWidth: '420px', borderRadius: '32px', padding: '40px 30px', boxShadow: '0 12px 40px rgba(0,0,0,0.06)', boxSizing: 'border-box' }}>
+        <Helmet>
+          <title>Vendor Portal | Qzkip</title>
+          {/* 🟢 Leaflet CSS is strictly required for the map to display correctly */}
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+        </Helmet>
+
+        <CustomPopup config={popup} setConfig={setPopup} /> 
+
+        <div style={{ 
+          width: '100%', background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', 
+          padding: '20px 24px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', boxSizing: 'border-box',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+        }}>
+          <div 
+            onClick={() => navigate('/')} 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+          >
+            <SmartLogo size={30} />
+            <h1 style={{margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px'}}>Qzkip</h1>
+          </div>
+          <span style={{ background: 'rgba(255,255,255,0.15)', color: '#F9F3EA', padding: '6px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700' }}>Vendor Portal</span>
+        </div>
+        
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
           
-          {/* ================= STEP 1: GOOGLE LOGIN ================= */}
-          {step === 'LOGIN' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-              <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                <h2 style={{ margin: '0 0 8px 0', color: '#1A1A2E', fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' }}>Partner Login</h2>
-                <p style={{ margin: 0, color: '#8E8E93', fontSize: '14px', fontWeight: '500' }}>Manage your queue seamlessly</p>
+          <div style={{ background: '#ffffff', width: '100%', maxWidth: '420px', borderRadius: '32px', padding: '40px 30px', boxShadow: '0 12px 40px rgba(0,0,0,0.06)', boxSizing: 'border-box' }}>
+            
+            {/* ================= STEP 1: GOOGLE LOGIN ================= */}
+            {step === 'LOGIN' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '10px' }}>
+                  <h2 style={{ margin: '0 0 8px 0', color: '#1A1A2E', fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' }}>Partner Login</h2>
+                  <p style={{ margin: 0, color: '#8E8E93', fontSize: '14px', fontWeight: '500' }}>Manage your queue seamlessly</p>
+                </div>
+                
+                <button 
+                  onClick={() => handleGoogleLogin(false)} 
+                  disabled={loading} 
+                  style={{ background: '#1A1A2E', color: '#fff', padding: '16px', borderRadius: '16px', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 24px rgba(26,26,46,0.2)', transition: 'transform 0.2s', marginTop: '10px' }}
+                >
+                  {loading ? 'Please wait...' : (
+                    <>
+                      <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                      </svg>
+                      Continue with Google
+                    </>
+                  )}
+                </button>
               </div>
-              
-              <button 
-                onClick={() => handleGoogleLogin(false)} 
-                disabled={loading} 
-                style={{ background: '#1A1A2E', color: '#fff', padding: '16px', borderRadius: '16px', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 24px rgba(26,26,46,0.2)', transition: 'transform 0.2s', marginTop: '10px' }}
-              >
-                {loading ? 'Please wait...' : (
-                  <>
-                    <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
-                      <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                    </svg>
-                    Continue with Google
-                  </>
-                )}
-              </button>
-              
-              <p style={{ textAlign: 'center', fontSize: '12px', color: '#8E8E93', marginTop: '10px', fontWeight: '500' }}>
-                One-click secure login for our partners.
-              </p>
-            </div>
-          )}
+            )}
 
-          {/* ================= STEP 2: KYC FORM ================= */}
-          {step === 'FORM' && (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ textAlign: 'center', marginBottom: '25px' }}>
-                <h2 style={{ margin: '0 0 5px 0', color: '#1A1A2E', fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' }}>Complete Profile</h2>
-                <p style={{ margin: 0, color: '#8E8E93', fontSize: '13px', fontWeight: '500' }}>Setup your shop details to get started</p>
-              </div>
-              
-              {/* 🟢 INTERACTIVE LOCATION STATUS INDICATOR */}
-              <div style={{ 
-                marginBottom: '15px', padding: '12px', borderRadius: '12px', 
-                background: locationStatus === 'denied' ? '#FEF2F2' : '#F0FDF4', 
-                border: `1px solid ${locationStatus === 'denied' ? '#FECACA' : '#BBF7D0'}`, 
-                display: 'flex', alignItems: 'center', gap: '8px',
-                cursor: locationStatus === 'denied' ? 'pointer' : 'default' 
-              }}
-              onClick={() => locationStatus === 'denied' && requestLocation()} 
-              >
-                {locationStatus === 'locating' && <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '600' }}>📍 Detecting GPS location...</span>}
-                {locationStatus === 'found' && <span style={{ fontSize: '12px', color: '#15803D', fontWeight: '600' }}>📍 GPS location captured for Maps</span>}
+            {/* ================= STEP 2: KYC FORM ================= */}
+            {step === 'FORM' && (
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                  <h2 style={{ margin: '0 0 5px 0', color: '#1A1A2E', fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' }}>Complete Profile</h2>
+                  <p style={{ margin: 0, color: '#8E8E93', fontSize: '13px', fontWeight: '500' }}>Setup your shop details to get started</p>
+                </div>
+                
+                {locationStatus === 'locating' && (
+                  <div style={{ marginBottom: '15px', padding: '12px', borderRadius: '12px', background: '#FFF4E5', border: '1px solid #FFD8A8', textAlign: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '700' }}>⏳ Detecting your GPS location...</span>
+                  </div>
+                )}
+                
                 {locationStatus === 'denied' && (
-                  <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '600' }}>
-                    📍 GPS denied. <span style={{textDecoration: 'underline'}}>Tap to retry</span> so customers can find you on Map.
-                  </span>
+                  <div onClick={requestLocation} style={{ marginBottom: '15px', padding: '12px', borderRadius: '12px', background: '#FEF2F2', border: '1px solid #FECACA', textAlign: 'center', cursor: 'pointer' }}>
+                    <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '700' }}>📍 GPS denied. <span style={{textDecoration: 'underline'}}>Tap to retry</span></span>
+                  </div>
                 )}
-              </div>
 
-              <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
-              
-              {/* 🟢 NEW: Manual Text Area for Shop Address */}
-              <textarea 
-                placeholder="Complete Shop Address (e.g., Shop No. 5, Main Market)" 
-                style={{ ...inputStyle, resize: 'none', height: '80px', fontFamily: 'inherit' }} 
-                value={form.shop_address} 
-                onChange={e => setForm({...form, shop_address: e.target.value})} 
-              />
-              
-              <select style={{...inputStyle, cursor: 'pointer'}} value={form.shop_type} onChange={e => setForm({...form, shop_type: e.target.value})}>
-                <option value="clinic">Clinic</option>
-                <option value="barber">Barber</option>
-                <option value="cyber cafe">Cyber Cafe</option>
-              </select>
+                {/* 🟢 NEW: Exact Pin Point Map (Zomato/Swiggy Style) */}
+                {coords && (
+                  <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
+                    <div style={{ padding: '10px 12px', background: '#FDF8F2', fontSize: '12px', fontWeight: '800', color: '#A86423', textAlign: 'center', borderBottom: '1px solid #F0D9C1' }}>
+                      📍 Tap on the map to set EXACT shop pin
+                    </div>
+                    {/* The Map itself */}
+                    <MapContainer 
+                      center={[coords.lat, coords.lng]} 
+                      zoom={17} 
+                      style={{ height: '220px', width: '100%', zIndex: 0 }}
+                    >
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <LocationPicker coords={coords} setCoords={setCoords} />
+                    </MapContainer>
+                  </div>
+                )}
 
-              <div style={{display: 'flex', gap: '10px'}}>
-                <select style={{...inputStyle, flex: '0.35', padding: '16px 12px'}} value={form.document_type} onChange={e => setForm({...form, document_type: e.target.value})}>
-                  <option value="PAN">PAN</option>
-                  <option value="GSTIN">GSTIN</option>
-                  <option value="Shop License">Shop Act</option>
+                <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
+                
+                <textarea 
+                  placeholder="Complete Shop Address (e.g., Shop No. 5, Main Market)" 
+                  style={{ ...inputStyle, resize: 'none', height: '80px', fontFamily: 'inherit' }} 
+                  value={form.shop_address} 
+                  onChange={e => setForm({...form, shop_address: e.target.value})} 
+                />
+                
+                <select style={{...inputStyle, cursor: 'pointer'}} value={form.shop_type} onChange={e => setForm({...form, shop_type: e.target.value})}>
+                  <option value="clinic">Clinic</option>
+                  <option value="barber">Barber</option>
+                  <option value="cyber cafe">Cyber Cafe</option>
                 </select>
-                <input type="text" placeholder="Document Number" style={{...inputStyle, flex: '0.65', textTransform: 'uppercase'}} value={form.document_number} onChange={e => setForm({...form, document_number: e.target.value})} />
+
+                <div style={{display: 'flex', gap: '10px'}}>
+                  <select style={{...inputStyle, flex: '0.35', padding: '16px 12px'}} value={form.document_type} onChange={e => setForm({...form, document_type: e.target.value})}>
+                    <option value="PAN">PAN</option>
+                    <option value="GSTIN">GSTIN</option>
+                    <option value="Shop License">Shop Act</option>
+                  </select>
+                  <input type="text" placeholder="Document Number" style={{...inputStyle, flex: '0.65', textTransform: 'uppercase'}} value={form.document_number} onChange={e => setForm({...form, document_number: e.target.value})} />
+                </div>
+                
+                <input type="tel" placeholder="10-Digit WhatsApp Number" style={inputStyle} value={form.phone} onChange={e => {
+                    const onlyNums = e.target.value.replace(/\D/g, ''); 
+                    if (onlyNums.length <= 10) setForm({...form, phone: onlyNums});
+                }}/>
+
+                <button onClick={handleFormSubmit} disabled={loading} style={{ background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', color: '#fff', border: 'none', padding: '18px', borderRadius: '16px', fontWeight: '800', marginTop: '5px', cursor: 'pointer', fontSize: '16px', boxShadow: '0 8px 24px rgba(168, 100, 35, 0.25)', transition: 'transform 0.2s' }}>
+                  {loading ? 'Submitting...' : 'Submit Exact Location & Details'}
+                </button>
+                
+                <span onClick={handleLogout} style={{ textAlign: 'center', color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
+                  Cancel & Use a different account
+                </span>
               </div>
-              
-              <input type="tel" placeholder="10-Digit WhatsApp Number" style={inputStyle} value={form.phone} onChange={e => {
-                  const onlyNums = e.target.value.replace(/\D/g, ''); 
-                  if (onlyNums.length <= 10) setForm({...form, phone: onlyNums});
-              }}/>
+            )}
 
-              <button onClick={handleFormSubmit} disabled={loading} style={{ background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', color: '#fff', border: 'none', padding: '18px', borderRadius: '16px', fontWeight: '800', marginTop: '10px', cursor: 'pointer', fontSize: '16px', boxShadow: '0 8px 24px rgba(168, 100, 35, 0.25)', transition: 'transform 0.2s' }}>
-                {loading ? 'Submitting...' : 'Submit Details'}
-              </button>
-              
-              <span onClick={handleLogout} style={{ textAlign: 'center', color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
-                Cancel & Use a different account
-              </span>
-            </div>
-          )}
-
-          {/* ================= STEP 3: PENDING SCREEN ================= */}
-          {step === 'PENDING' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
-              <div style={{ background: '#FFF4E5', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px', boxShadow: '0 8px 20px rgba(255, 149, 0, 0.15)' }}>
-                <span style={{ fontSize: '32px' }}>⏳</span>
+            {step === 'PENDING' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
+                <div style={{ background: '#FFF4E5', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '32px' }}>⏳</span>
+                </div>
+                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900' }}>Under Review</h2>
+                <button onClick={checkVerificationStatus} style={{ background: '#F2F2F7', color: '#1A1A2E', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', marginTop: '20px' }}>
+                  ↻ Check Status
+                </button>
               </div>
-              <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900', letterSpacing: '-0.5px' }}>Under Review</h2>
-              <p style={{ color: '#8E8E93', fontSize: '15px', textAlign: 'center', lineHeight: '1.5', margin: '0 0 20px 0', fontWeight: '500' }}>
-                Your documents and address are being verified. Once approved, you will be able to start your queue.
-              </p>
+            )}
 
-              <div style={{ background: '#F2F2F7', padding: '8px 16px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>
-                <div style={{ width: '8px', height: '8px', background: '#FF9500', borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 149, 0, 0.6)' }}></div>
-                <span style={{ fontSize: '12px', color: '#8E8E93', fontWeight: '600' }}>Logged in as <b style={{color: '#1A1A2E'}}>{googleData.email}</b></span>
+            {step === 'REJECTED' && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
+                <div style={{ background: '#FEE2E2', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
+                  <span style={{ fontSize: '32px' }}>❌</span>
+                </div>
+                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900' }}>Application Rejected</h2>
+                <button onClick={() => setStep('FORM')} style={{ background: '#1A1A2E', color: '#FFF', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', marginTop: '20px' }}>
+                  Update Details & Re-apply
+                </button>
               </div>
-              
-              <button onClick={checkVerificationStatus} disabled={loading} style={{ background: '#F2F2F7', color: '#1A1A2E', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', transition: 'background 0.2s' }}>
-                {loading ? 'Checking...' : '↻ Check Status'}
-              </button>
+            )}
 
-              <span onClick={handleLogout} style={{ color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
-                Use a different account
-              </span>
-            </div>
-          )}
-
-         {/* ================= STEP 4: REJECTED SCREEN 🔴 ================= */}
-          {step === 'REJECTED' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
-              <div style={{ background: '#FEE2E2', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px', boxShadow: '0 8px 20px rgba(220, 38, 38, 0.15)' }}>
-                <span style={{ fontSize: '32px' }}>❌</span>
-              </div>
-              <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900', letterSpacing: '-0.5px' }}>Application Rejected</h2>
-              <p style={{ color: '#8E8E93', fontSize: '15px', textAlign: 'center', lineHeight: '1.5', margin: '0 0 20px 0', fontWeight: '500' }}>
-                We're sorry, but your vendor application has been declined. You can update your details and re-apply.
-              </p>
-              
-              <div style={{ background: '#F2F2F7', padding: '8px 16px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>
-                <div style={{ width: '8px', height: '8px', background: '#DC2626', borderRadius: '50%', boxShadow: '0 0 5px rgba(220, 38, 38, 0.6)' }}></div>
-                <span style={{ fontSize: '12px', color: '#8E8E93', fontWeight: '600' }}>Logged in as <b style={{color: '#1A1A2E'}}>{googleData.email}</b></span>
-              </div>
-
-              <button 
-                onClick={() => setStep('FORM')} 
-                style={{ background: '#1A1A2E', color: '#FFF', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', transition: 'background 0.2s', marginTop: '10px' }}
-              >
-                Update Details & Re-apply
-              </button>
-
-              <button 
-                onClick={handleLogout} 
-                style={{ background: 'transparent', color: '#DC2626', border: '1px solid #DC2626', fontWeight: '800', cursor: 'pointer', padding: '14px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', marginTop: '15px' }}
-              >
-                Use a different account
-              </button>
-            </div>
-          )}
-
+          </div>
         </div>
-        
-        <p style={{textAlign:'center', marginTop:'30px'}}>
-          <span style={{color: '#8E8E93', cursor:'pointer', fontSize:'14px', fontWeight: '700', padding: '10px'}} onClick={() => navigate('/')}>
-            ← Back to Customer App
-          </span>
-        </p>
-        
       </div>
-    </div>
+    </HelmetProvider>
   );
 };
 
