@@ -6,7 +6,8 @@ import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { 
   Store, CheckCircle, XCircle, Trash2, MapPin, 
   Phone, FileText, Power, Users, Clock, LogOut, Search
-} from 'lucide-react'; // 🟢 Added Search icon
+} from 'lucide-react';
+import SmartLogo from '../components/SmartLogo'; // 🟢 Added SmartLogo import
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/admin'; 
 
@@ -22,7 +23,7 @@ const AdminDashboard = () => {
   const [activeVendors, setActiveVendors] = useState([]);
   const [loading, setLoading] = useState(false);
   
-  // 🟢 NEW: State for Search Query
+  // 🟢 State for Search Query
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -77,7 +78,7 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchPendingVendors(); 
-      fetchActiveVendors(); // 🟢 Fixed: Ensures active list is updated in background
+      fetchActiveVendors();
     } catch (error) {
       alert('Error occurred during approval');
     }
@@ -113,7 +114,6 @@ const AdminDashboard = () => {
     localStorage.removeItem('adminToken');
   };
 
-  // 🟢 NEW: Logic to filter vendors based on search query (QR ID, Name, or Phone)
   const filteredActiveVendors = activeVendors.filter(vendor => {
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
@@ -131,12 +131,12 @@ const AdminDashboard = () => {
     return (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: '#0F172A', fontFamily: 'sans-serif' }}>
         <div style={{ padding: '40px', width: '100%', maxWidth: '400px', backgroundColor: '#1E293B', borderRadius: '24px', boxShadow: '0 20px 40px rgba(0,0,0,0.4)', border: '1px solid #334155' }}>
+          
+          {/* 🟢 Updated Login Header with Qzkip Branding */}
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-            <div style={{ background: '#3B82F6', padding: '16px', borderRadius: '50%', boxShadow: '0 0 20px rgba(59, 130, 246, 0.4)' }}>
-              <Power color="#fff" size={32} />
-            </div>
+            <SmartLogo size={50} />
           </div>
-          <h2 style={{ color: '#fff', textAlign: 'center', marginBottom: '8px', fontSize: '24px', fontWeight: '800' }}>Admin Portal</h2>
+          <h2 style={{ color: '#fff', textAlign: 'center', marginBottom: '8px', fontSize: '24px', fontWeight: '800' }}>Qzkip Admin</h2>
           <p style={{ color: '#94A3B8', textAlign: 'center', marginBottom: '30px', fontSize: '14px' }}>Enter God Mode</p>
           
           <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -181,15 +181,18 @@ const AdminDashboard = () => {
           `}</style>
         </Helmet>
 
-        {/* TOP NAVBAR */}
-        <div style={{ background: '#ffffff', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #E2E8F0', position: 'sticky', top: 0, zIndex: 100 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ background: '#1E293B', padding: '8px', borderRadius: '10px' }}><Power color="#fff" size={20} /></div>
-            <h1 style={{ margin: 0, color: '#0F172A', fontSize: '22px', fontWeight: '800' }}>Command Center</h1>
+        {/* 🟢 TOP NAVBAR - Dark Premium Theme with Qzkip Logo */}
+        <div style={{ background: '#1E293B', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #334155', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
+            <SmartLogo size={32} />
+            <h1 style={{ margin: 0, color: '#ffffff', fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' }}>Qzkip</h1>
           </div>
-          <button onClick={handleLogout} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '10px 16px', borderRadius: '10px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <LogOut size={16} /> Logout
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <span style={{ background: 'rgba(255,255,255,0.1)', color: '#94A3B8', padding: '6px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700' }}>Admin Portal</span>
+            <button onClick={handleLogout} style={{ background: '#FEE2E2', color: '#DC2626', border: 'none', padding: '10px 16px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <LogOut size={16} /> Logout
+            </button>
+          </div>
         </div>
 
         <div style={{ padding: '32px', maxWidth: '1400px', margin: '0 auto' }}>
@@ -223,7 +226,7 @@ const AdminDashboard = () => {
             {activeTab === 'active' && (
               <div style={{ overflowX: 'auto' }}>
                 
-                {/* 🟢 SEARCH BAR UI */}
+                {/* SEARCH BAR UI */}
                 <div style={{ padding: '16px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', gap: '16px', alignItems: 'center', background: '#F8FAFC' }}>
                   <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
                     <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
@@ -246,7 +249,7 @@ const AdminDashboard = () => {
                       <th style={{ padding: '16px 24px', fontWeight: '700' }}>Shop Name & Status</th>
                       <th style={{ padding: '16px 24px', fontWeight: '700' }}>Contact</th>
                       <th style={{ padding: '16px 24px', fontWeight: '700' }}>Queue Stats (Today)</th>
-                      <th style={{ padding: '16px 24px', fontWeight: '700', textAlign: 'right' }}>Actions</th>
+                      <th style={{ padding: '16px 24px', fontWeight: '700', textAlign: 'right' }}>God Actions</th>
                     </tr>
                   </thead>
                   <tbody>
