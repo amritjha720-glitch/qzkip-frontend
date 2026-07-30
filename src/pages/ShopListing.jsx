@@ -15,7 +15,7 @@ const QUEUE_URL = 'https://qzkip-backend.onrender.com/api/queue';
 // 🟢 CACHING LOGIC
 const CACHE_KEY = 'qzkip_user_location';
 const CACHE_TIME_KEY = 'qzkip_loc_timestamp';
-const EXPIRY_MS = 60 * 60 * 1000; // 1 Hour
+const EXPIRY_MS = 5 * 60 * 1000; // 5 Minutes
 
 const getCachedLocation = () => {
   const loc = localStorage.getItem(CACHE_KEY);
