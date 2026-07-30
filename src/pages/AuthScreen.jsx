@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomPopup from "../components/CustomPopup";
 import { auth, googleProvider } from '../firebase';
@@ -10,177 +10,8 @@ import { Helmet, HelmetProvider } from 'react-helmet-async';
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
-// 🟢 NEW: Securely Fetching Ola Krutrim Maps API Key from .env
-const MAP_API_KEY = import.meta.env?.VITE_OLA_MAPS_API_KEY || process.env.REACT_APP_OLA_MAPS_API_KEY || '';
-
 // ==========================================
-// 📍 🟢 PRODUCTION LEVEL OLA MAPS (Fixed CDN & Search)
-// ==========================================
-const OlaMapPicker = ({ initialCoords, onCoordsChange }) => {
-  const mapContainerRef = useRef(null);
-  const mapInstance = useRef(null);
-  
-  // 🟢 Search States
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isSearching, setIsSearching] = useState(false);
-
-  useEffect(() => {
-    // Agar map pehle se ban chuka hai ya coords nahi hain, toh ruk jao
-    if (!initialCoords || mapInstance.current) return;
-
-    const loadMap = () => {
-      const OlaMapsClass = window.OlaMaps;
-      if (!OlaMapsClass) {
-        console.error("Ola Maps SDK Web failed to load.");
-        return;
-      }
-
-      // Initialize Ola Maps
-      const olaMaps = new OlaMapsClass({ apiKey: MAP_API_KEY });
-      
-      const map = olaMaps.init({
-        style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
-        container: mapContainerRef.current,
-        center: [initialCoords.lng, initialCoords.lat], // Note: Ola Maps takes [Longitude, Latitude]
-        zoom: 16,
-      });
-
-      mapInstance.current = map;
-
-      // 🟢 THE MAGIC UX: Jaise jaise map drag hoga, ye naya center point nikalta rahega
-      map.on('move', () => {
-        const center = map.getCenter();
-        onCoordsChange({ lat: center.lat, lng: center.lng });
-      });
-    };
-
-    // 🟢 CRITICAL FIX: Dead CDNs removed, using stable unpkg links
-    if (!window.OlaMaps) {
-      // Load CSS (MapLibre fallback for stability)
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css';
-      document.head.appendChild(link);
-
-      // Load JS (Official Ola Maps UMD)
-      const script = document.createElement('script');
-      script.src = 'https://www.unpkg.com/olamaps-web-sdk@latest/dist/olamaps-web-sdk.umd.js';
-      script.async = true;
-      script.onload = loadMap;
-      document.body.appendChild(script);
-    } else {
-      loadMap();
-    }
-
-    return () => {
-      // Cleanup map instance on unmount
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
-    };
-  }, []); // Run only once to initialize map
-
-  // 🟢 MAGICAL SEARCH FEATURE (Ola Geocoding API)
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchQuery.trim() || !MAP_API_KEY) return;
-    
-    setIsSearching(true);
-    try {
-      const response = await axios.get(`https://api.olamaps.io/places/v1/geocode?address=${encodeURIComponent(searchQuery)}&api_key=${MAP_API_KEY}`);
-      
-      if (response.data && response.data.geocodingResults && response.data.geocodingResults.length > 0) {
-        const location = response.data.geocodingResults[0].geometry.location;
-        const newLat = location.lat;
-        const newLng = location.lng;
-        
-        onCoordsChange({ lat: newLat, lng: newLng });
-        
-        // 🟢 Animate Map to new location smoothly
-        if (mapInstance.current) {
-          mapInstance.current.flyTo({
-            center: [newLng, newLat],
-            zoom: 16,
-            essential: true 
-          });
-        }
-      } else {
-        alert("Location not found! Try searching a broader area (e.g., 'Rohini, Delhi').");
-      }
-    } catch (error) {
-      console.error("Search failed:", error);
-      alert("Error finding location. Please manually drag the map.");
-    } finally {
-      setIsSearching(false);
-    }
-  };
-
-  return (
-    <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
-      
-      {/* 🟢 Search Bar UI */}
-      <div style={{ padding: '10px', background: '#FDF8F2', borderBottom: '1px solid #F0D9C1' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
-          <input 
-            type="text" 
-            placeholder="Search your shop area..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #D1D1D6', fontSize: '13px', outline: 'none' }}
-          />
-          <button 
-            type="submit" 
-            disabled={isSearching}
-            style={{ background: '#A86423', color: '#fff', border: 'none', padding: '0 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
-          >
-            {isSearching ? '...' : 'Find'}
-          </button>
-        </form>
-        <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '11px', color: '#A86423', fontWeight: 'bold' }}>
-          Then drag the map to place the pin EXACTLY on your shop
-        </div>
-      </div>
-
-      <div style={{ position: 'relative', width: '100%', height: '250px' }}>
-        
-        {/* Error Fallback: Agar API key missing ho toh UI warning do */}
-        {!MAP_API_KEY && (
-          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '20px', textAlign: 'center' }}>
-            <span style={{ color: '#DC2626', fontWeight: 'bold', fontSize: '13px' }}>Error: API Key Missing. Redeploy from Vercel after adding VITE_OLA_MAPS_API_KEY.</span>
-          </div>
-        )}
-
-        {/* Map Container - Ise explicit height chahiye warna render nahi hoga */}
-        <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
-        
-        {/* 📍 FIXED PIN (Always in Center) */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -100%)', // Ensure the tip of the pin is exactly at the center
-          zIndex: 1000,
-          fontSize: '35px', 
-          pointerEvents: 'none', // 🟢 CRITICAL: Taaki map pin ke aar-paar click/drag ho sake
-          textShadow: '0 4px 10px rgba(0,0,0,0.3)',
-        }}>
-          📍
-        </div>
-        
-        {/* Target UI for accuracy */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '8px', height: '8px', background: '#000',
-          borderRadius: '50%', zIndex: 999, opacity: 0.2, pointerEvents: 'none'
-        }} />
-      </div>
-    </div>
-  );
-};
-
-
-// ==========================================
-// AUTH SCREEN COMPONENT
+// AUTH SCREEN COMPONENT (MAP-FREE, HIGH-ACCURACY GPS)
 // ==========================================
 const AuthScreen = () => {
   const navigate = useNavigate();
@@ -204,8 +35,6 @@ const AuthScreen = () => {
   });
 
   const [locationStatus, setLocationStatus] = useState('idle'); 
-  
-  // 🟢 We use coords state. If it's null, we show loading. Once it has a value, Map renders.
   const [coords, setCoords] = useState(null);
 
   const config = { withCredentials: true };
@@ -214,8 +43,11 @@ const AuthScreen = () => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
+  // 🟢 MAGICAL FIX: Strict High-Accuracy Background GPS
   const requestLocation = () => {
     setLocationStatus('locating');
+    setCoords(null);
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
@@ -226,24 +58,24 @@ const AuthScreen = () => {
           console.error("Location access denied by vendor:", err);
           setLocationStatus('denied');
           
-          // 🔴 FALLBACK: Agar location deny kar de, toh default (Delhi) par khol do taaki map chalta rahe
-          setCoords({ lat: 28.6139, lng: 77.2090 });
-          
           if (err.code === err.PERMISSION_DENIED) {
             setPopup({ 
               isOpen: true, 
-              title: 'Location Disabled', 
-              message: 'Please drag the map to your exact shop location since GPS is off.', 
+              title: 'Location Required', 
+              message: 'Shop registration requires your exact location. Please allow GPS access in your browser settings and try again.', 
               type: 'alert', 
               confirmText: 'Got It' 
             });
           }
         },
-        { enableHighAccuracy: true, timeout: 6000 }
+        { 
+          enableHighAccuracy: true, // Force true satellite GPS
+          maximumAge: 0,            // No caching (Always fetch fresh)
+          timeout: 15000            // Wait up to 15 seconds for exact lock
+        }
       );
     } else {
       setLocationStatus('denied');
-      setCoords({ lat: 28.6139, lng: 77.2090 }); 
     }
   };
 
@@ -316,8 +148,8 @@ const AuthScreen = () => {
     if (!coords) {
       return setPopup({ 
         isOpen: true, 
-        title: 'Map Loading', 
-        message: 'Please wait for the map to load and drag the pin to your exact location.', 
+        title: 'Location Missing', 
+        message: 'We could not fetch your exact location. Please click "Retry" on the location box and allow GPS access.', 
         type: 'alert', 
         confirmText: 'OK' 
       });
@@ -464,26 +296,35 @@ const AuthScreen = () => {
                   <p style={{ margin: 0, color: '#8E8E93', fontSize: '13px', fontWeight: '500' }}>Setup your shop details to get started</p>
                 </div>
                 
-                {locationStatus === 'locating' && (
-                  <div style={{ marginBottom: '15px', padding: '12px', borderRadius: '12px', background: '#FFF4E5', border: '1px solid #FFD8A8', textAlign: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '700' }}>⏳ Detecting your GPS location...</span>
-                  </div>
-                )}
-                
-                {locationStatus === 'denied' && (
-                  <div onClick={requestLocation} style={{ marginBottom: '15px', padding: '12px', borderRadius: '12px', background: '#FEF2F2', border: '1px solid #FECACA', textAlign: 'center', cursor: 'pointer' }}>
-                    <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '700' }}>📍 GPS denied. <span style={{textDecoration: 'underline'}}>Tap to retry</span></span>
-                  </div>
-                )}
+                {/* 📍 🟢 CLEAN LOCATION FETCHER UI */}
+                <div style={{ marginBottom: '20px', borderRadius: '16px', border: '2px solid #E5E5EA', overflow: 'hidden', background: '#FDF8F2' }}>
+                  
+                  {locationStatus === 'locating' && (
+                    <div style={{ padding: '20px', textAlign: 'center' }}>
+                      <div style={{ fontSize: '24px', animation: 'spin 2s linear infinite', marginBottom: '8px' }}>⏳</div>
+                      <div style={{ color: '#A86423', fontWeight: '800', fontSize: '14px', marginBottom: '4px' }}>Fetching Exact GPS Location...</div>
+                      <div style={{ color: '#B45309', fontSize: '11px', fontWeight: '700' }}>⚠️ Please stay exactly at your shop location.</div>
+                    </div>
+                  )}
 
-                {/* 🟢 OLA MAPS RENDER BLOCK */}
-                {coords ? (
-                  <OlaMapPicker initialCoords={coords} onCoordsChange={setCoords} />
-                ) : (
-                  <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FA', marginBottom: '20px' }}>
-                    <span style={{ color: '#8E8E93', fontSize: '12px', fontWeight: '600' }}>Loading Map...</span>
-                  </div>
-                )}
+                  {locationStatus === 'found' && (
+                    <div style={{ padding: '16px', textAlign: 'center', background: '#F0FDF4', borderBottom: '2px solid #BBF7D0' }}>
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>✅</div>
+                      <div style={{ color: '#166534', fontWeight: '800', fontSize: '14px' }}>Location Secured!</div>
+                      <div style={{ color: '#15803D', fontSize: '11px', marginTop: '4px' }}>Lat: {coords?.lat.toFixed(4)}, Lng: {coords?.lng.toFixed(4)}</div>
+                    </div>
+                  )}
+
+                  {locationStatus === 'denied' && (
+                    <div style={{ padding: '20px', textAlign: 'center', background: '#FEF2F2', borderBottom: '2px solid #FECACA' }}>
+                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>❌</div>
+                      <div style={{ color: '#991B1B', fontWeight: '800', fontSize: '14px', marginBottom: '8px' }}>GPS Access Denied</div>
+                      <button onClick={requestLocation} style={{ background: '#DC2626', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>
+                        Retry Fetching
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                 <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
                 
