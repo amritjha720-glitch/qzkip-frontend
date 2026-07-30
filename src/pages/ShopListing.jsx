@@ -139,12 +139,20 @@ const ShopListing = () => {
     }
   };
 
+  // 🟢 FIXED SEARCH LOGIC (Works flawlessly for both Name and QR ID)
   const filteredShops = (shops || []).filter(s => {
     const searchLower = searchTerm.toLowerCase().trim();
-    const matchesSearch = (s.shop_name?.toLowerCase() || '').includes(searchLower) || (s.qr_id?.toLowerCase() || '').includes(searchLower);
+    
+    // Convert to String first to prevent crashing if ID is numeric
+    const shopNameStr = String(s.shop_name || '').toLowerCase();
+    const qrIdStr = String(s.qr_id || '').toLowerCase();
+    
+    const matchesSearch = shopNameStr.includes(searchLower) || qrIdStr.includes(searchLower);
+    
     const safeShopType = (s.shop_type || '').toLowerCase().trim();
     const safeActiveCat = activeCategory.toLowerCase().trim();
     const matchesCategory = activeCategory === 'All' || safeShopType === safeActiveCat;
+    
     return matchesSearch && matchesCategory;
   });
 
@@ -207,7 +215,6 @@ const ShopListing = () => {
             background: #D6EAFF;
           }
           
-          /* 🟢 PREMIUM PILL STYLES FOR LOCATION BADGE */
           .loc-badge {
             display: inline-flex;
             align-items: center;
@@ -224,7 +231,7 @@ const ShopListing = () => {
           .loc-badge.success {
             background: rgba(255, 214, 10, 0.15);
             border: 1px solid rgba(255, 214, 10, 0.3);
-            color: #FFD60A; /* Premium Vibrant Yellow */
+            color: #FFD60A;
           }
           .loc-badge.loading {
             background: rgba(255, 255, 255, 0.1);
@@ -261,14 +268,12 @@ const ShopListing = () => {
             {/* 🟢 TOP ROW: LOGO + PILL (LEFT) & MENU (RIGHT) */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '22px' }}>
               
-              {/* Left Column: Qzkip Logo and Location Pill perfectly aligned vertically */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
                   <SmartLogo size={30} />
                   <h1 style={{ margin: 0, fontSize: '24px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px', lineHeight: '1' }}>Qzkip</h1>
                 </div>
 
-                {/* The Pill is now EXACTLY under the logo group */}
                 <div style={{ paddingLeft: '2px' }}>
                   {locationStatus === 'locating' && (
                     <div className="loc-badge loading">
@@ -288,7 +293,6 @@ const ShopListing = () => {
                 </div>
               </div>
 
-              {/* Right Column: Menu Icon */}
               <button onClick={() => setIsSidebarOpen(true)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px', marginTop: '2px' }}>
                 <MenuIcon size={28} strokeWidth={2.5} />
               </button>
@@ -298,7 +302,7 @@ const ShopListing = () => {
             {/* Search Bar */}
             <div style={{ display: 'flex', alignItems: 'center', background: '#fff', borderRadius: '30px', padding: '14px 20px', marginBottom: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
               <Search size={20} color="#A0A0A0" style={{ marginRight: '12px' }} />
-              <input type="text" placeholder="Search for clinics, salons, etc..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '15px', color: '#1a1a2e', fontWeight: '500' }} />
+              <input type="text" placeholder="Search by shop name or QR ID..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} style={{ border: 'none', background: 'transparent', outline: 'none', width: '100%', fontSize: '15px', color: '#1a1a2e', fontWeight: '500' }} />
             </div>
 
             {/* Categories */}
@@ -435,7 +439,7 @@ const ShopListing = () => {
             </button>
           </div>
 
-          {/* 🟢 CLEAN FOOTER (Blue part removed) */}
+          {/* 🟢 CLEAN FOOTER */}
           <div className="bottom-footer" style={{ paddingBottom: '100px', textAlign: 'center' }}>
             <p className="footer-quote" style={{ color: '#8E8E93', fontStyle: 'italic', fontSize: '14px', lineHeight: '1.6', marginBottom: '8px' }}>
               "Waqt bahut keemti hai.<br /> Ise line mein nahi, apno ke saath bitayein."
