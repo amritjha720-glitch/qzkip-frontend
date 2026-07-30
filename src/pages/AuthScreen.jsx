@@ -10,81 +10,101 @@ import { Helmet, HelmetProvider } from 'react-helmet-async';
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
-// 🟢 NEW: Securely Fetching Ola Maps API Key from .env
-const MAP_API_KEY = import.meta.env?.VITE_OLA_MAPS_API_KEY || process.env.REACT_APP_OLA_MAPS_API_KEY || 'MISSING_API_KEY';
+// 🟢 NEW: Securely Fetching Ola Krutrim Maps API Key from .env
+const MAP_API_KEY = import.meta.env?.VITE_OLA_MAPS_API_KEY || process.env.REACT_APP_OLA_MAPS_API_KEY || '';
 
 // ==========================================
-// 📍 🟢 OLA MAPS COMPONENT (Zomato Style UX)
+// 📍 🟢 PRODUCTION LEVEL OLA MAPS COMPONENT (Fixed Pin, Draggable Map)
 // ==========================================
-const OlaMapPicker = ({ coords, setCoords }) => {
-  const mapRef = useRef(null);
-  const isMapInitialized = useRef(false);
+const OlaMapPicker = ({ initialCoords, onCoordsChange }) => {
+  const mapContainerRef = useRef(null);
+  const mapInstance = useRef(null);
 
   useEffect(() => {
-    // Agar coords nahi aaye ya map pehle hi ban chuka hai, toh rok do
-    if (!coords || isMapInitialized.current) return;
+    // Agar map pehle se ban chuka hai ya coords nahi hain, toh ruk jao
+    if (!initialCoords || mapInstance.current) return;
 
-    const initOlaMap = () => {
-      isMapInitialized.current = true;
+    const loadMap = () => {
+      if (!window.OlaMaps) {
+        console.error("Ola Maps SDK Web failed to load.");
+        return;
+      }
+
+      // Initialize Ola Maps
       const olaMaps = new window.OlaMaps({ apiKey: MAP_API_KEY });
       
       const map = olaMaps.init({
         style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
-        container: mapRef.current,
-        center: [coords.lng, coords.lat], // Note: Ola/Mapbox takes [Lng, Lat]
+        container: mapContainerRef.current,
+        center: [initialCoords.lng, initialCoords.lat], // Note: Ola Maps takes [Longitude, Latitude]
         zoom: 16,
       });
 
-      // 🟢 MAGICAL UX: Jaise-jaise map move hoga, coordinates update hote rahenge
+      mapInstance.current = map;
+
+      // 🟢 THE MAGIC UX: Jaise jaise map drag hoga, ye naya center point nikalta rahega
       map.on('move', () => {
         const center = map.getCenter();
-        setCoords({ lat: center.lat, lng: center.lng });
+        onCoordsChange({ lat: center.lat, lng: center.lng });
       });
     };
 
-    // 🟢 DYNAMIC INJECTION: Bina kisi npm install ke official Ola SDK load karna
+    // 🟢 Ola Maps SDK Dynamically Inject Karna (Taaki React mein fast load ho)
     if (!window.OlaMaps) {
+      // Load CSS
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = 'https://cdn.olamaps.io/ib-web-sdk/ola-maps-web-sdk.min.css';
       document.head.appendChild(link);
 
+      // Load JS
       const script = document.createElement('script');
       script.src = 'https://cdn.olamaps.io/ib-web-sdk/ola-maps-web-sdk.umd.js';
-      script.onload = initOlaMap;
-      document.head.appendChild(script);
+      script.async = true;
+      script.onload = loadMap;
+      document.body.appendChild(script);
     } else {
-      initOlaMap();
+      loadMap();
     }
-  }, [coords, setCoords]);
+
+    return () => {
+      // Cleanup map instance on unmount
+      if (mapInstance.current) {
+        mapInstance.current.remove();
+        mapInstance.current = null;
+      }
+    };
+  }, []); // Run only once to initialize map
 
   return (
-    <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
-      <div style={{ padding: '8px 12px', background: '#FDF8F2', fontSize: '11px', fontWeight: '800', color: '#A86423', textAlign: 'center', borderBottom: '1px solid #F0D9C1', display: 'flex', flexDirection: 'column' }}>
-        <span>📍 Drag the map to place the pin on your exact shop</span>
-        <span style={{color: '#8E8E93', fontSize: '10px', marginTop: '2px'}}>
-          Live Updates: Lat {coords?.lat.toFixed(4)}, Lng {coords?.lng.toFixed(4)}
-        </span>
+    <div style={{ position: 'relative', width: '100%', height: '220px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E5EA' }}>
+      
+      {/* Map Container - Ise explicit height chahiye warna render nahi hoga */}
+      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+      
+      {/* 📍 FIXED PIN (Always in Center) */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%',
+        transform: 'translate(-50%, -100%)', // Ensure the tip of the pin is exactly at the center
+        zIndex: 1000,
+        fontSize: '35px', 
+        pointerEvents: 'none', // 🟢 CRITICAL: Taaki map pin ke aar-paar click/drag ho sake
+        textShadow: '0 4px 10px rgba(0,0,0,0.3)',
+      }}>
+        📍
       </div>
       
-      {/* Container for Map */}
-      <div style={{ position: 'relative', width: '100%', height: '220px' }}>
-        <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
-        
-        {/* 🟢 ZOMATO STYLE CENTER PIN (Fixed Position) */}
-        <div style={{
-          position: 'absolute', top: '50%', left: '50%',
-          transform: 'translate(-50%, -100%)', zIndex: 10,
-          fontSize: '32px', pointerEvents: 'none',
-          textShadow: '0 4px 10px rgba(0,0,0,0.3)',
-          animation: 'bounce 2s infinite'
-        }}>
-          📍
-        </div>
-      </div>
+      {/* Target UI for accuracy */}
+      <div style={{
+        position: 'absolute', top: '50%', left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: '8px', height: '8px', background: '#000',
+        borderRadius: '50%', zIndex: 999, opacity: 0.2, pointerEvents: 'none'
+      }} />
     </div>
   );
 };
+
 
 // ==========================================
 // AUTH SCREEN COMPONENT
@@ -111,6 +131,8 @@ const AuthScreen = () => {
   });
 
   const [locationStatus, setLocationStatus] = useState('idle'); 
+  
+  // 🟢 We use coords state. If it's null, we show loading. Once it has a value, Map renders.
   const [coords, setCoords] = useState(null);
 
   const config = { withCredentials: true };
@@ -130,11 +152,15 @@ const AuthScreen = () => {
         (err) => {
           console.error("Location access denied by vendor:", err);
           setLocationStatus('denied');
+          
+          // 🔴 FALLBACK: Agar location deny kar de, toh default (Delhi) par khol do taaki map chalta rahe
+          setCoords({ lat: 28.6139, lng: 77.2090 });
+          
           if (err.code === err.PERMISSION_DENIED) {
             setPopup({ 
               isOpen: true, 
               title: 'Location Disabled', 
-              message: 'Please allow location so customers can navigate to your shop via Google Maps.', 
+              message: 'Please drag the map to your exact shop location since GPS is off.', 
               type: 'alert', 
               confirmText: 'Got It' 
             });
@@ -144,6 +170,7 @@ const AuthScreen = () => {
       );
     } else {
       setLocationStatus('denied');
+      setCoords({ lat: 28.6139, lng: 77.2090 }); 
     }
   };
 
@@ -195,7 +222,6 @@ const AuthScreen = () => {
       }
     } catch (e) {
       if (e.code !== 'auth/popup-closed-by-user') {
-        console.error("Login Error:", e);
         setPopup({ isOpen: true, title: 'Login Failed', message: 'Google login failed. Please try again.', type: 'alert', confirmText: 'OK' });
       }
     } finally {
@@ -217,13 +243,13 @@ const AuthScreen = () => {
     if (!coords) {
       return setPopup({ 
         isOpen: true, 
-        title: 'Location Missing', 
-        message: 'Please allow GPS access and pin your exact location on the map before submitting.', 
+        title: 'Map Loading', 
+        message: 'Please wait for the map to load and drag the pin to your exact location.', 
         type: 'alert', 
         confirmText: 'OK' 
       });
     }
-    
+
     setLoading(true);
     try {
       const payload = { ...googleData, ...form };
@@ -378,7 +404,22 @@ const AuthScreen = () => {
                 )}
 
                 {/* 🟢 OLA MAPS RENDER BLOCK */}
-                {coords && <OlaMapPicker coords={coords} setCoords={setCoords} />}
+                <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
+                  <div style={{ padding: '8px 12px', background: '#FDF8F2', fontSize: '12px', fontWeight: '800', color: '#A86423', textAlign: 'center', borderBottom: '1px solid #F0D9C1', display: 'flex', flexDirection: 'column' }}>
+                    <span>📍 Drag the map to place the pin on your exact shop</span>
+                    <span style={{color: '#8E8E93', fontSize: '10px', marginTop: '2px'}}>
+                      Live Updates: Lat {coords?.lat.toFixed(4) || '...'}, Lng {coords?.lng.toFixed(4) || '...'}
+                    </span>
+                  </div>
+                  
+                  {coords ? (
+                    <OlaMapPicker initialCoords={coords} onCoordsChange={setCoords} />
+                  ) : (
+                    <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FA' }}>
+                      <span style={{ color: '#8E8E93', fontSize: '12px', fontWeight: '600' }}>Loading Map...</span>
+                    </div>
+                  )}
+                </div>
 
                 <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
                 
