@@ -275,7 +275,7 @@ const AuthScreen = () => {
                   <div style={{ width: '64px', height: '64px', background: '#FFF7ED', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
                     <Store size={32} color="#A86423" />
                   </div>
-                  <h2 style={{ margin: '0 0 8px 0', color: '#111827', fontSize: '28px', fontWeight: '800', letterSpacing: '-0.5px' }}>Welcome back</h2>
+                  <h2 style={{ margin: '0 0 8px 0', color: '#111827', fontSize: '28px', fontWeight: '800', letterSpacing: '-0.5px' }}>Welcome</h2>
                   <p style={{ margin: 0, color: '#6B7280', fontSize: '15px', fontWeight: '500' }}>Log in to manage your queue seamlessly.</p>
                 </div>
                 
