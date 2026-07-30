@@ -246,7 +246,7 @@ const AdminDashboard = () => {
                       <th style={{ padding: '16px 24px', fontWeight: '700' }}>Shop Name & Status</th>
                       <th style={{ padding: '16px 24px', fontWeight: '700' }}>Contact</th>
                       <th style={{ padding: '16px 24px', fontWeight: '700' }}>Queue Stats (Today)</th>
-                      <th style={{ padding: '16px 24px', fontWeight: '700', textAlign: 'right' }}>God Actions</th>
+                      <th style={{ padding: '16px 24px', fontWeight: '700', textAlign: 'right' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
