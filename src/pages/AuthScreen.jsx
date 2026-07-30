@@ -14,24 +14,29 @@ const API_URL = 'https://qzkip-backend.onrender.com/api/auth';
 const MAP_API_KEY = import.meta.env?.VITE_OLA_MAPS_API_KEY || process.env.REACT_APP_OLA_MAPS_API_KEY || '';
 
 // ==========================================
-// 📍 🟢 PRODUCTION LEVEL OLA MAPS COMPONENT (Fixed Pin, Draggable Map)
+// 📍 🟢 PRODUCTION LEVEL OLA MAPS (Fixed CDN & Search)
 // ==========================================
 const OlaMapPicker = ({ initialCoords, onCoordsChange }) => {
   const mapContainerRef = useRef(null);
   const mapInstance = useRef(null);
+  
+  // 🟢 Search States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     // Agar map pehle se ban chuka hai ya coords nahi hain, toh ruk jao
     if (!initialCoords || mapInstance.current) return;
 
     const loadMap = () => {
-      if (!window.OlaMaps) {
+      const OlaMapsClass = window.OlaMaps;
+      if (!OlaMapsClass) {
         console.error("Ola Maps SDK Web failed to load.");
         return;
       }
 
       // Initialize Ola Maps
-      const olaMaps = new window.OlaMaps({ apiKey: MAP_API_KEY });
+      const olaMaps = new OlaMapsClass({ apiKey: MAP_API_KEY });
       
       const map = olaMaps.init({
         style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
@@ -49,17 +54,17 @@ const OlaMapPicker = ({ initialCoords, onCoordsChange }) => {
       });
     };
 
-    // 🟢 Ola Maps SDK Dynamically Inject Karna (Taaki React mein fast load ho)
+    // 🟢 CRITICAL FIX: Dead CDNs removed, using stable unpkg links
     if (!window.OlaMaps) {
-      // Load CSS
+      // Load CSS (MapLibre fallback for stability)
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = 'https://cdn.olamaps.io/ib-web-sdk/ola-maps-web-sdk.min.css';
+      link.href = 'https://unpkg.com/maplibre-gl@3.6.0/dist/maplibre-gl.css';
       document.head.appendChild(link);
 
-      // Load JS
+      // Load JS (Official Ola Maps UMD)
       const script = document.createElement('script');
-      script.src = 'https://cdn.olamaps.io/ib-web-sdk/ola-maps-web-sdk.umd.js';
+      script.src = 'https://www.unpkg.com/olamaps-web-sdk@latest/dist/olamaps-web-sdk.umd.js';
       script.async = true;
       script.onload = loadMap;
       document.body.appendChild(script);
@@ -76,31 +81,99 @@ const OlaMapPicker = ({ initialCoords, onCoordsChange }) => {
     };
   }, []); // Run only once to initialize map
 
+  // 🟢 MAGICAL SEARCH FEATURE (Ola Geocoding API)
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim() || !MAP_API_KEY) return;
+    
+    setIsSearching(true);
+    try {
+      const response = await axios.get(`https://api.olamaps.io/places/v1/geocode?address=${encodeURIComponent(searchQuery)}&api_key=${MAP_API_KEY}`);
+      
+      if (response.data && response.data.geocodingResults && response.data.geocodingResults.length > 0) {
+        const location = response.data.geocodingResults[0].geometry.location;
+        const newLat = location.lat;
+        const newLng = location.lng;
+        
+        onCoordsChange({ lat: newLat, lng: newLng });
+        
+        // 🟢 Animate Map to new location smoothly
+        if (mapInstance.current) {
+          mapInstance.current.flyTo({
+            center: [newLng, newLat],
+            zoom: 16,
+            essential: true 
+          });
+        }
+      } else {
+        alert("Location not found! Try searching a broader area (e.g., 'Rohini, Delhi').");
+      }
+    } catch (error) {
+      console.error("Search failed:", error);
+      alert("Error finding location. Please manually drag the map.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
   return (
-    <div style={{ position: 'relative', width: '100%', height: '220px', borderRadius: '12px', overflow: 'hidden', border: '1px solid #E5E5EA' }}>
+    <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
       
-      {/* Map Container - Ise explicit height chahiye warna render nahi hoga */}
-      <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
-      
-      {/* 📍 FIXED PIN (Always in Center) */}
-      <div style={{
-        position: 'absolute', top: '50%', left: '50%',
-        transform: 'translate(-50%, -100%)', // Ensure the tip of the pin is exactly at the center
-        zIndex: 1000,
-        fontSize: '35px', 
-        pointerEvents: 'none', // 🟢 CRITICAL: Taaki map pin ke aar-paar click/drag ho sake
-        textShadow: '0 4px 10px rgba(0,0,0,0.3)',
-      }}>
-        📍
+      {/* 🟢 Search Bar UI */}
+      <div style={{ padding: '10px', background: '#FDF8F2', borderBottom: '1px solid #F0D9C1' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px' }}>
+          <input 
+            type="text" 
+            placeholder="Search your shop area..." 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{ flex: 1, padding: '10px 14px', borderRadius: '8px', border: '1px solid #D1D1D6', fontSize: '13px', outline: 'none' }}
+          />
+          <button 
+            type="submit" 
+            disabled={isSearching}
+            style={{ background: '#A86423', color: '#fff', border: 'none', padding: '0 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '13px' }}
+          >
+            {isSearching ? '...' : 'Find'}
+          </button>
+        </form>
+        <div style={{ textAlign: 'center', marginTop: '6px', fontSize: '11px', color: '#A86423', fontWeight: 'bold' }}>
+          Then drag the map to place the pin EXACTLY on your shop
+        </div>
       </div>
-      
-      {/* Target UI for accuracy */}
-      <div style={{
-        position: 'absolute', top: '50%', left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: '8px', height: '8px', background: '#000',
-        borderRadius: '50%', zIndex: 999, opacity: 0.2, pointerEvents: 'none'
-      }} />
+
+      <div style={{ position: 'relative', width: '100%', height: '250px' }}>
+        
+        {/* Error Fallback: Agar API key missing ho toh UI warning do */}
+        {!MAP_API_KEY && (
+          <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', background: '#FEE2E2', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 500, padding: '20px', textAlign: 'center' }}>
+            <span style={{ color: '#DC2626', fontWeight: 'bold', fontSize: '13px' }}>Error: API Key Missing. Redeploy from Vercel after adding VITE_OLA_MAPS_API_KEY.</span>
+          </div>
+        )}
+
+        {/* Map Container - Ise explicit height chahiye warna render nahi hoga */}
+        <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
+        
+        {/* 📍 FIXED PIN (Always in Center) */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -100%)', // Ensure the tip of the pin is exactly at the center
+          zIndex: 1000,
+          fontSize: '35px', 
+          pointerEvents: 'none', // 🟢 CRITICAL: Taaki map pin ke aar-paar click/drag ho sake
+          textShadow: '0 4px 10px rgba(0,0,0,0.3)',
+        }}>
+          📍
+        </div>
+        
+        {/* Target UI for accuracy */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '8px', height: '8px', background: '#000',
+          borderRadius: '50%', zIndex: 999, opacity: 0.2, pointerEvents: 'none'
+        }} />
+      </div>
     </div>
   );
 };
@@ -404,22 +477,13 @@ const AuthScreen = () => {
                 )}
 
                 {/* 🟢 OLA MAPS RENDER BLOCK */}
-                <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
-                  <div style={{ padding: '8px 12px', background: '#FDF8F2', fontSize: '12px', fontWeight: '800', color: '#A86423', textAlign: 'center', borderBottom: '1px solid #F0D9C1', display: 'flex', flexDirection: 'column' }}>
-                    <span>📍 Drag the map to place the pin on your exact shop</span>
-                    <span style={{color: '#8E8E93', fontSize: '10px', marginTop: '2px'}}>
-                      Live Updates: Lat {coords?.lat.toFixed(4) || '...'}, Lng {coords?.lng.toFixed(4) || '...'}
-                    </span>
+                {coords ? (
+                  <OlaMapPicker initialCoords={coords} onCoordsChange={setCoords} />
+                ) : (
+                  <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FA', marginBottom: '20px' }}>
+                    <span style={{ color: '#8E8E93', fontSize: '12px', fontWeight: '600' }}>Loading Map...</span>
                   </div>
-                  
-                  {coords ? (
-                    <OlaMapPicker initialCoords={coords} onCoordsChange={setCoords} />
-                  ) : (
-                    <div style={{ height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8F9FA' }}>
-                      <span style={{ color: '#8E8E93', fontSize: '12px', fontWeight: '600' }}>Loading Map...</span>
-                    </div>
-                  )}
-                </div>
+                )}
 
                 <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
                 
