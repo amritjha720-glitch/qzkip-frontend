@@ -7,7 +7,9 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
-import { MapPin, Store, FileText, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCcw, LogOut, ChevronRight } from 'lucide-react';
+
+// 🟢 NEW: 'Clock' icon imported for the premium wait state
+import { MapPin, Store, FileText, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCcw, LogOut, ChevronRight, Clock } from 'lucide-react';
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
@@ -221,10 +223,26 @@ const AuthScreen = () => {
               pointer-events: none; transition: color 0.2s ease;
             }
             .input-group:focus-within .input-icon { color: #A86423; }
+            
+            /* General Spin */
             @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             .animate-spin { animation: spin 1s linear infinite; }
+            
+            /* Button hover */
             .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
             .btn-hover:active { transform: scale(0.98); }
+
+            /* 🟢 NEW: Premium Pulse Animation for "Under Review" Status */
+            @keyframes pulse-ring {
+              0% { transform: scale(0.85); opacity: 0.5; }
+              100% { transform: scale(1.4); opacity: 0; }
+            }
+            .pulse-bg {
+              position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+              border-radius: 50%; background: #F59E0B;
+              animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+              z-index: 0;
+            }
           `}</style>
         </Helmet>
 
@@ -314,7 +332,6 @@ const AuthScreen = () => {
                       </div>
                       <div>
                         <div style={{ color: '#166534', fontWeight: '700', fontSize: '15px' }}>Location Secured</div>
-                        {/* 🟢 Clean user-friendly message, no Lat/Lng */}
                         <div style={{ color: '#15803D', fontSize: '13px', marginTop: '2px' }}>We've successfully verified your shop's position.</div>
                       </div>
                     </div>
@@ -390,31 +407,64 @@ const AuthScreen = () => {
               </div>
             )}
 
-            {/* ================= STEP 3: PENDING ================= */}
+            {/* ================= STEP 3: PENDING (PREMIUM PULSE + EMAIL) ================= */}
             {step === 'PENDING' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', textAlign: 'center' }}>
-                <div style={{ background: '#FFF7ED', padding: '24px', borderRadius: '50%', marginBottom: '24px' }}>
-                  <Loader2 className="animate-spin" color="#F59E0B" size={48} />
+                
+                {/* 🟢 Premium Pulse Animation */}
+                <div style={{ position: 'relative', marginBottom: '32px', width: '96px', height: '96px' }}>
+                  <div className="pulse-bg"></div>
+                  <div style={{ background: '#FFF7ED', width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
+                    <Clock color="#F59E0B" size={44} />
+                  </div>
                 </div>
-                <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 8px 0', fontWeight: '800' }}>Under Review</h2>
-                <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px 0', lineHeight: '1.5' }}>Your application has been submitted successfully and is currently being reviewed by our team.</p>
-                <button onClick={checkVerificationStatus} className="btn-hover" style={{ background: '#F3F4F6', color: '#111827', border: 'none', fontWeight: '700', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <RefreshCcw size={18} /> Check Status
+
+                <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 12px 0', fontWeight: '800' }}>Under Review</h2>
+                
+                {/* 🟢 Email ID Badge */}
+                {googleData.email && (
+                  <div style={{ background: '#F3F4F6', padding: '6px 16px', borderRadius: '20px', marginBottom: '24px', border: '1px solid #E5E7EB' }}>
+                    <span style={{ color: '#4B5563', fontSize: '13px', fontWeight: '700' }}>{googleData.email}</span>
+                  </div>
+                )}
+
+                <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 32px 0', lineHeight: '1.5' }}>Your application has been submitted successfully and is currently being reviewed by our team.</p>
+                
+                <button onClick={checkVerificationStatus} className="btn-hover" style={{ background: '#111827', color: '#fff', border: 'none', fontWeight: '700', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <RefreshCcw size={18} /> Refresh Status
                 </button>
+
+                <div onClick={handleLogout} style={{ color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '24px', fontWeight: '700' }}>
+                  Log out of this account
+                </div>
               </div>
             )}
 
             {/* ================= STEP 4: REJECTED ================= */}
             {step === 'REJECTED' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', textAlign: 'center' }}>
-                <div style={{ background: '#FEE2E2', padding: '24px', borderRadius: '50%', marginBottom: '24px' }}>
+                <div style={{ background: '#FEE2E2', width: '96px', height: '96px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginBottom: '24px' }}>
                   <AlertCircle color="#DC2626" size={48} />
                 </div>
-                <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 8px 0', fontWeight: '800' }}>Application Rejected</h2>
-                <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px 0', lineHeight: '1.5' }}>There was an issue with the details provided. Please review and update your information.</p>
+                
+                <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 12px 0', fontWeight: '800' }}>Application Rejected</h2>
+                
+                {/* 🟢 Email ID Badge */}
+                {googleData.email && (
+                  <div style={{ background: '#FEF2F2', padding: '6px 16px', borderRadius: '20px', marginBottom: '24px', border: '1px solid #FECACA' }}>
+                    <span style={{ color: '#991B1B', fontSize: '13px', fontWeight: '700' }}>{googleData.email}</span>
+                  </div>
+                )}
+
+                <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 32px 0', lineHeight: '1.5' }}>There was an issue with the details provided. Please review and update your information.</p>
+                
                 <button onClick={() => setStep('FORM')} className="btn-hover" style={{ background: '#111827', color: '#FFF', border: 'none', fontWeight: '700', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '14px', width: '100%' }}>
                   Update Details & Re-apply
                 </button>
+
+                <div onClick={handleLogout} style={{ color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '24px', fontWeight: '700' }}>
+                  Log out of this account
+                </div>
               </div>
             )}
 
