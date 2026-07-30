@@ -7,17 +7,18 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
-import { MapPin, Store, FileText, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCcw, LogOut, ChevronRight, Clock } from 'lucide-react';
+import { MapPin, Store, FileText, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCcw, LogOut, ChevronRight, Clock, Map } from 'lucide-react'; // 🟢 Added Map icon for refetch
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
-// ==========================================
-// AUTH SCREEN COMPONENT (PREMIUM UI + GOLDEN HEADER)
-// ==========================================
 const AuthScreen = () => {
   const navigate = useNavigate();
   
-  const [step, setStep] = useState('LOGIN'); 
+  // 🟢 PRODUCTION FIX: Step state initialize from localStorage
+  const [step, setStep] = useState(() => {
+    return localStorage.getItem('vendorAuthStep') || 'LOGIN';
+  }); 
+  
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState({ isOpen: false }); 
   
@@ -40,10 +41,20 @@ const AuthScreen = () => {
 
   const config = { withCredentials: true };
 
+  // 🟢 PRODUCTION FIX: Sync 'step' state to localStorage whenever it changes
+  useEffect(() => {
+    if (step !== 'LOGIN') {
+      localStorage.setItem('vendorAuthStep', step);
+    } else {
+      localStorage.removeItem('vendorAuthStep');
+    }
+  }, [step]);
+
   useEffect(() => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
+  // 🟢 ENHANCED: Location Fetching Logic
   const requestLocation = () => {
     setLocationStatus('locating');
     setCoords(null);
@@ -75,11 +86,12 @@ const AuthScreen = () => {
     }
   };
 
+  // Trigger location only when entering the FORM step
   useEffect(() => {
-    if (step === 'FORM') {
+    if (step === 'FORM' && locationStatus === 'idle') {
       requestLocation();
     }
-  }, [step]);
+  }, [step, locationStatus]);
 
   const handleGoogleLogin = async (forceSelect = false) => {
     setLoading(true);
@@ -100,6 +112,7 @@ const AuthScreen = () => {
       };
       
       setGoogleData(gData);
+      localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
 
       const res = await axios.post(`${API_URL}/google`, { 
         googleUID: gData.googleUID, 
@@ -108,17 +121,15 @@ const AuthScreen = () => {
       
       if (res.data.action === 'SHOW_FORM') {
         setStep('FORM');
-        localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
       } else if (res.data.action === 'SHOW_PENDING') {
         setStep('PENDING');
-        localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
       } else if (res.data.action === 'SHOW_REJECTED') {
         setStep('REJECTED');
-        localStorage.setItem('vendorGoogleData', JSON.stringify(gData));
       } else if (res.data.action === 'LOGIN_SUCCESS') {
         localStorage.setItem('vendorToken', res.data.token);
         localStorage.setItem('vendorEmail', gData.email); 
         localStorage.removeItem('vendorGoogleData');
+        localStorage.removeItem('vendorAuthStep');
         navigate('/dashboard');
       }
     } catch (e) {
@@ -178,6 +189,7 @@ const AuthScreen = () => {
         localStorage.setItem('vendorToken', res.data.token);
         localStorage.setItem('vendorEmail', googleData.email); 
         localStorage.removeItem('vendorGoogleData');
+        localStorage.removeItem('vendorAuthStep');
         navigate('/dashboard');
       }
     } catch (e) {
@@ -187,15 +199,19 @@ const AuthScreen = () => {
     }
   };
 
+  // 🟢 FULL CLEANUP ON LOGOUT
   const handleLogout = async () => {
     await signOut(auth); 
     try { await axios.post(`${API_URL}/logout`, {}, config); } catch (e) {}
     setStep('LOGIN'); 
     setGoogleData({googleUID: '', email: '', name: ''});
+    
+    // Clear all traces
     localStorage.removeItem('vendorGoogleData');
     localStorage.removeItem('vendorToken');
     localStorage.removeItem('vendorEmail'); 
     localStorage.removeItem('vendorAuthStep'); 
+    
     handleGoogleLogin(true); 
   };
 
@@ -222,15 +238,12 @@ const AuthScreen = () => {
             }
             .input-group:focus-within .input-icon { color: #A86423; }
             
-            /* General Spin */
             @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
             .animate-spin { animation: spin 1s linear infinite; }
             
-            /* Button hover */
             .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
             .btn-hover:active { transform: scale(0.98); }
 
-            /* Premium Pulse Animation */
             @keyframes pulse-ring {
               0% { transform: scale(0.85); opacity: 0.5; }
               100% { transform: scale(1.4); opacity: 0; }
@@ -327,10 +340,14 @@ const AuthScreen = () => {
                       <div style={{ background: '#DCFCE7', padding: '10px', borderRadius: '50%' }}>
                         <CheckCircle2 color="#16A34A" size={24} />
                       </div>
-                      <div>
+                      <div style={{ flex: 1 }}>
                         <div style={{ color: '#166534', fontWeight: '700', fontSize: '15px' }}>Location Secured</div>
-                        <div style={{ color: '#15803D', fontSize: '13px', marginTop: '2px' }}>We've successfully verified your shop's position.</div>
+                        <div style={{ color: '#15803D', fontSize: '13px', marginTop: '2px' }}>Coordinates fetched accurately.</div>
                       </div>
+                      {/* 🟢 NEW: Refetch button even if found */}
+                      <button onClick={requestLocation} className="btn-hover" style={{ background: 'transparent', color: '#16A34A', border: '1px solid #16A34A', padding: '6px 10px', borderRadius: '8px', fontWeight: '700', cursor: 'pointer', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Map size={14} /> Re-fetch
+                      </button>
                     </div>
                   )}
 
@@ -403,7 +420,7 @@ const AuthScreen = () => {
               </div>
             )}
 
-            {/* ================= STEP 3: PENDING (WITH SPINNING REFRESH) ================= */}
+            {/* ================= STEP 3: PENDING ================= */}
             {step === 'PENDING' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', textAlign: 'center' }}>
                 
@@ -424,7 +441,6 @@ const AuthScreen = () => {
 
                 <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 32px 0', lineHeight: '1.5' }}>Your application has been submitted successfully and is currently being reviewed by our team.</p>
                 
-                {/* 🟢 NEW: Refresh button with spinning animation when loading = true */}
                 <button 
                   onClick={checkVerificationStatus} 
                   disabled={loading}
