@@ -7,8 +7,6 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
-
-// 🟢 NEW: 'Clock' icon imported for the premium wait state
 import { MapPin, Store, FileText, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCcw, LogOut, ChevronRight, Clock } from 'lucide-react';
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
@@ -232,7 +230,7 @@ const AuthScreen = () => {
             .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
             .btn-hover:active { transform: scale(0.98); }
 
-            /* 🟢 NEW: Premium Pulse Animation for "Under Review" Status */
+            /* Premium Pulse Animation */
             @keyframes pulse-ring {
               0% { transform: scale(0.85); opacity: 0.5; }
               100% { transform: scale(1.4); opacity: 0; }
@@ -248,7 +246,7 @@ const AuthScreen = () => {
 
         <CustomPopup config={popup} setConfig={setPopup} /> 
 
-        {/* 🟢 TOP NAVBAR - GOLDEN THEME RESTORED */}
+        {/* TOP NAVBAR */}
         <div style={{ 
           width: '100%', background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', 
           padding: '20px 24px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', boxSizing: 'border-box',
@@ -310,7 +308,6 @@ const AuthScreen = () => {
                   <p style={{ margin: 0, color: '#6B7280', fontSize: '14px', fontWeight: '500' }}>Setup your business details to get started.</p>
                 </div>
                 
-                {/* 📍 🟢 PREMIUM LOCATION UI (NO LAT/LNG) */}
                 <div style={{ marginBottom: '24px', borderRadius: '16px', border: '1.5px solid #E5E7EB', overflow: 'hidden', background: '#F9FAFB' }}>
                   
                   {locationStatus === 'locating' && (
@@ -353,7 +350,6 @@ const AuthScreen = () => {
                   )}
                 </div>
 
-                {/* PREMIUM INPUT FIELDS WITH ICONS */}
                 <div className="input-group">
                   <Store className="input-icon" size={20} />
                   <input type="text" placeholder="Business Name" className="premium-input" value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
@@ -407,11 +403,10 @@ const AuthScreen = () => {
               </div>
             )}
 
-            {/* ================= STEP 3: PENDING (PREMIUM PULSE + EMAIL) ================= */}
+            {/* ================= STEP 3: PENDING (WITH SPINNING REFRESH) ================= */}
             {step === 'PENDING' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', textAlign: 'center' }}>
                 
-                {/* 🟢 Premium Pulse Animation */}
                 <div style={{ position: 'relative', marginBottom: '32px', width: '96px', height: '96px' }}>
                   <div className="pulse-bg"></div>
                   <div style={{ background: '#FFF7ED', width: '100%', height: '100%', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
@@ -421,7 +416,6 @@ const AuthScreen = () => {
 
                 <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 12px 0', fontWeight: '800' }}>Under Review</h2>
                 
-                {/* 🟢 Email ID Badge */}
                 {googleData.email && (
                   <div style={{ background: '#F3F4F6', padding: '6px 16px', borderRadius: '20px', marginBottom: '24px', border: '1px solid #E5E7EB' }}>
                     <span style={{ color: '#4B5563', fontSize: '13px', fontWeight: '700' }}>{googleData.email}</span>
@@ -430,8 +424,15 @@ const AuthScreen = () => {
 
                 <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 32px 0', lineHeight: '1.5' }}>Your application has been submitted successfully and is currently being reviewed by our team.</p>
                 
-                <button onClick={checkVerificationStatus} className="btn-hover" style={{ background: '#111827', color: '#fff', border: 'none', fontWeight: '700', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                  <RefreshCcw size={18} /> Refresh Status
+                {/* 🟢 NEW: Refresh button with spinning animation when loading = true */}
+                <button 
+                  onClick={checkVerificationStatus} 
+                  disabled={loading}
+                  className="btn-hover" 
+                  style={{ background: '#111827', color: '#fff', border: 'none', fontWeight: '700', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  <RefreshCcw size={18} className={loading ? "animate-spin" : ""} /> 
+                  {loading ? 'Refreshing...' : 'Refresh Status'}
                 </button>
 
                 <div onClick={handleLogout} style={{ color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '24px', fontWeight: '700' }}>
@@ -449,7 +450,6 @@ const AuthScreen = () => {
                 
                 <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 12px 0', fontWeight: '800' }}>Application Rejected</h2>
                 
-                {/* 🟢 Email ID Badge */}
                 {googleData.email && (
                   <div style={{ background: '#FEF2F2', padding: '6px 16px', borderRadius: '20px', marginBottom: '24px', border: '1px solid #FECACA' }}>
                     <span style={{ color: '#991B1B', fontSize: '13px', fontWeight: '700' }}>{googleData.email}</span>
