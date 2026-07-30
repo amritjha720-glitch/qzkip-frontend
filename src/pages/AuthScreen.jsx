@@ -7,11 +7,13 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
+// 🟢 NEW: Premium Icons imported for a "Real App" feel
+import { MapPin, Store, FileText, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCcw, LogOut, ChevronRight } from 'lucide-react';
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
 // ==========================================
-// AUTH SCREEN COMPONENT (MAP-FREE, HIGH-ACCURACY GPS)
+// AUTH SCREEN COMPONENT (PREMIUM APP UI)
 // ==========================================
 const AuthScreen = () => {
   const navigate = useNavigate();
@@ -43,7 +45,6 @@ const AuthScreen = () => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
-  // 🟢 MAGICAL FIX: Strict High-Accuracy Background GPS
   const requestLocation = () => {
     setLocationStatus('locating');
     setCoords(null);
@@ -68,11 +69,7 @@ const AuthScreen = () => {
             });
           }
         },
-        { 
-          enableHighAccuracy: true, // Force true satellite GPS
-          maximumAge: 0,            // No caching (Always fetch fresh)
-          timeout: 15000            // Wait up to 15 seconds for exact lock
-        }
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
       );
     } else {
       setLocationStatus('denied');
@@ -136,23 +133,11 @@ const AuthScreen = () => {
 
   const handleFormSubmit = async () => {
     if (form.phone.length !== 10 || !form.shop_name || !form.document_number || form.shop_address.trim().length < 10) {
-      return setPopup({ 
-        isOpen: true, 
-        title: 'Missing Fields', 
-        message: 'Please fill out all fields correctly. Ensure the shop address is complete.', 
-        type: 'alert', 
-        confirmText: 'OK' 
-      });
+      return setPopup({ isOpen: true, title: 'Missing Fields', message: 'Please fill out all fields correctly. Ensure the shop address is complete.', type: 'alert', confirmText: 'OK' });
     }
 
     if (!coords) {
-      return setPopup({ 
-        isOpen: true, 
-        title: 'Location Missing', 
-        message: 'We could not fetch your exact location. Please click "Retry" on the location box and allow GPS access.', 
-        type: 'alert', 
-        confirmText: 'OK' 
-      });
+      return setPopup({ isOpen: true, title: 'Location Missing', message: 'We could not fetch your exact location. Please click "Retry" on the location box and allow GPS access.', type: 'alert', confirmText: 'OK' });
     }
 
     setLoading(true);
@@ -184,10 +169,7 @@ const AuthScreen = () => {
   const checkVerificationStatus = async () => {
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/google`, { 
-        googleUID: googleData.googleUID, 
-        email: googleData.email 
-      }, config);
+      const res = await axios.post(`${API_URL}/google`, { googleUID: googleData.googleUID, email: googleData.email }, config);
       
       if (res.data.action === 'SHOW_PENDING') {
         console.log("Status check: Still Pending");
@@ -208,72 +190,84 @@ const AuthScreen = () => {
 
   const handleLogout = async () => {
     await signOut(auth); 
-    
-    try {
-      await axios.post(`${API_URL}/logout`, {}, config);
-    } catch (e) { console.log("Logout backend clear failed", e); }
-
+    try { await axios.post(`${API_URL}/logout`, {}, config); } catch (e) {}
     setStep('LOGIN'); 
     setGoogleData({googleUID: '', email: '', name: ''});
-    
     localStorage.removeItem('vendorGoogleData');
     localStorage.removeItem('vendorToken');
     localStorage.removeItem('vendorEmail'); 
     localStorage.removeItem('vendorAuthStep'); 
-    
     handleGoogleLogin(true); 
-  };
-
-  const inputStyle = {
-    width: '100%', padding: '16px', marginBottom: '16px', borderRadius: '16px', 
-    border: '1px solid #E5E5EA', background: '#F8F9FA', fontSize: '15px', 
-    outline: 'none', fontWeight: '600', color: '#1A1A2E', boxSizing: 'border-box',
-    transition: 'border-color 0.2s'
   };
 
   return (
     <HelmetProvider>
-      <div style={{ minHeight: '100vh', background: '#F8F7F3', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-        
+      <div style={{ minHeight: '100vh', background: '#F4F5F7', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
         <Helmet>
-          <title>Vendor Portal | Qzkip</title>
+          <title>Partner Portal | Qzkip</title>
+          {/* 🟢 CSS Injected for Premium Animations and Focus States */}
+          <style>{`
+            .premium-input {
+              width: 100%; padding: 16px 16px 16px 44px; border-radius: 12px;
+              border: 1.5px solid #E5E7EB; background: #F9FAFB; font-size: 15px;
+              outline: none; font-weight: 500; color: #111827; box-sizing: border-box;
+              transition: all 0.2s ease;
+            }
+            .premium-input:focus {
+              border-color: #A86423; background: #ffffff;
+              box-shadow: 0 0 0 4px rgba(168, 100, 35, 0.1);
+            }
+            .input-group { position: relative; margin-bottom: 16px; }
+            .input-icon {
+              position: absolute; left: 14px; top: 16px; color: #9CA3AF;
+              pointer-events: none; transition: color 0.2s ease;
+            }
+            .input-group:focus-within .input-icon { color: #A86423; }
+            @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+            .animate-spin { animation: spin 1s linear infinite; }
+            .btn-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+            .btn-hover:active { transform: scale(0.98); }
+          `}</style>
         </Helmet>
 
         <CustomPopup config={popup} setConfig={setPopup} /> 
 
+        {/* TOP NAVBAR */}
         <div style={{ 
-          width: '100%', background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', 
-          padding: '20px 24px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', boxSizing: 'border-box',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+          width: '100%', background: '#ffffff', 
+          padding: '16px 24px', borderBottom: '1px solid #E5E7EB', boxSizing: 'border-box',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50
         }}>
-          <div 
-            onClick={() => navigate('/')} 
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
-          >
-            <SmartLogo size={30} />
-            <h1 style={{margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px'}}>Qzkip</h1>
+          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+            <div style={{background: '#A86423', borderRadius: '8px', padding: '6px'}}><SmartLogo size={22} color="#fff" /></div>
+            <h1 style={{margin: 0, fontSize: '20px', color: '#111827', fontWeight: '800', letterSpacing: '-0.5px'}}>Qzkip</h1>
           </div>
-          <span style={{ background: 'rgba(255,255,255,0.15)', color: '#F9F3EA', padding: '6px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700' }}>Vendor Portal</span>
+          <span style={{ background: '#FEF3C7', color: '#92400E', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>Partner Portal</span>
         </div>
         
+        {/* MAIN CONTENT CONTAINER */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
           
-          <div style={{ background: '#ffffff', width: '100%', maxWidth: '420px', borderRadius: '32px', padding: '40px 30px', boxShadow: '0 12px 40px rgba(0,0,0,0.06)', boxSizing: 'border-box' }}>
+          <div style={{ background: '#ffffff', width: '100%', maxWidth: '440px', borderRadius: '24px', padding: '40px 32px', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)', border: '1px solid #F3F4F6', boxSizing: 'border-box' }}>
             
             {/* ================= STEP 1: GOOGLE LOGIN ================= */}
             {step === 'LOGIN' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div style={{ textAlign: 'center', marginBottom: '10px' }}>
-                  <h2 style={{ margin: '0 0 8px 0', color: '#1A1A2E', fontSize: '26px', fontWeight: '900', letterSpacing: '-0.5px' }}>Partner Login</h2>
-                  <p style={{ margin: 0, color: '#8E8E93', fontSize: '14px', fontWeight: '500' }}>Manage your queue seamlessly</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', textAlign: 'center' }}>
+                <div>
+                  <div style={{ width: '64px', height: '64px', background: '#FFF7ED', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
+                    <Store size={32} color="#A86423" />
+                  </div>
+                  <h2 style={{ margin: '0 0 8px 0', color: '#111827', fontSize: '28px', fontWeight: '800', letterSpacing: '-0.5px' }}>Welcome back</h2>
+                  <p style={{ margin: 0, color: '#6B7280', fontSize: '15px', fontWeight: '500' }}>Log in to manage your queue seamlessly.</p>
                 </div>
                 
                 <button 
                   onClick={() => handleGoogleLogin(false)} 
                   disabled={loading} 
-                  style={{ background: '#1A1A2E', color: '#fff', padding: '16px', borderRadius: '16px', fontWeight: '700', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', boxShadow: '0 8px 24px rgba(26,26,46,0.2)', transition: 'transform 0.2s', marginTop: '10px' }}
+                  className="btn-hover"
+                  style={{ background: '#111827', color: '#fff', padding: '16px', borderRadius: '16px', fontWeight: '600', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', fontSize: '15px', width: '100%' }}
                 >
-                  {loading ? 'Please wait...' : (
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : (
                     <>
                       <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
                         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -291,99 +285,132 @@ const AuthScreen = () => {
             {/* ================= STEP 2: KYC FORM ================= */}
             {step === 'FORM' && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-                  <h2 style={{ margin: '0 0 5px 0', color: '#1A1A2E', fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' }}>Complete Profile</h2>
-                  <p style={{ margin: 0, color: '#8E8E93', fontSize: '13px', fontWeight: '500' }}>Setup your shop details to get started</p>
+                <div style={{ marginBottom: '24px' }}>
+                  <h2 style={{ margin: '0 0 6px 0', color: '#111827', fontSize: '24px', fontWeight: '800', letterSpacing: '-0.5px' }}>Complete Profile</h2>
+                  <p style={{ margin: 0, color: '#6B7280', fontSize: '14px', fontWeight: '500' }}>Setup your business details to get started.</p>
                 </div>
                 
-                {/* 📍 🟢 CLEAN LOCATION FETCHER UI */}
-                <div style={{ marginBottom: '20px', borderRadius: '16px', border: '2px solid #E5E5EA', overflow: 'hidden', background: '#FDF8F2' }}>
+                {/* 📍 🟢 PREMIUM LOCATION UI (NO LAT/LNG) */}
+                <div style={{ marginBottom: '24px', borderRadius: '16px', border: '1.5px solid #E5E7EB', overflow: 'hidden', background: '#F9FAFB' }}>
                   
                   {locationStatus === 'locating' && (
-                    <div style={{ padding: '20px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '24px', animation: 'spin 2s linear infinite', marginBottom: '8px' }}>⏳</div>
-                      <div style={{ color: '#A86423', fontWeight: '800', fontSize: '14px', marginBottom: '4px' }}>Fetching Exact GPS Location...</div>
-                      <div style={{ color: '#B45309', fontSize: '11px', fontWeight: '700' }}>⚠️ Please stay exactly at your shop location.</div>
+                    <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ background: '#FFF7ED', padding: '12px', borderRadius: '50%' }}>
+                        <Loader2 className="animate-spin" color="#A86423" size={24} />
+                      </div>
+                      <div>
+                        <div style={{ color: '#111827', fontWeight: '700', fontSize: '15px' }}>Detecting Location...</div>
+                        <div style={{ color: '#6B7280', fontSize: '13px', marginTop: '2px' }}>Please stay at your shop.</div>
+                      </div>
                     </div>
                   )}
 
                   {locationStatus === 'found' && (
-                    <div style={{ padding: '16px', textAlign: 'center', background: '#F0FDF4', borderBottom: '2px solid #BBF7D0' }}>
-                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>✅</div>
-                      <div style={{ color: '#166534', fontWeight: '800', fontSize: '14px' }}>Location Secured!</div>
-                      <div style={{ color: '#15803D', fontSize: '11px', marginTop: '4px' }}>Lat: {coords?.lat.toFixed(4)}, Lng: {coords?.lng.toFixed(4)}</div>
+                    <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', background: '#F0FDF4', borderLeft: '4px solid #16A34A' }}>
+                      <div style={{ background: '#DCFCE7', padding: '10px', borderRadius: '50%' }}>
+                        <CheckCircle2 color="#16A34A" size={24} />
+                      </div>
+                      <div>
+                        <div style={{ color: '#166534', fontWeight: '700', fontSize: '15px' }}>Location Secured</div>
+                        {/* 🟢 Removed Lat/Lng completely. Just a clean user-friendly message. */}
+                        <div style={{ color: '#15803D', fontSize: '13px', marginTop: '2px' }}>We've pinpointed your shop on the map.</div>
+                      </div>
                     </div>
                   )}
 
                   {locationStatus === 'denied' && (
-                    <div style={{ padding: '20px', textAlign: 'center', background: '#FEF2F2', borderBottom: '2px solid #FECACA' }}>
-                      <div style={{ fontSize: '24px', marginBottom: '4px' }}>❌</div>
-                      <div style={{ color: '#991B1B', fontWeight: '800', fontSize: '14px', marginBottom: '8px' }}>GPS Access Denied</div>
-                      <button onClick={requestLocation} style={{ background: '#DC2626', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer', fontSize: '12px' }}>
-                        Retry Fetching
+                    <div style={{ padding: '20px', display: 'flex', alignItems: 'center', gap: '16px', background: '#FEF2F2', borderLeft: '4px solid #DC2626' }}>
+                      <div style={{ background: '#FEE2E2', padding: '10px', borderRadius: '50%' }}>
+                        <AlertCircle color="#DC2626" size={24} />
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ color: '#991B1B', fontWeight: '700', fontSize: '15px' }}>GPS Disabled</div>
+                        <div style={{ color: '#B91C1C', fontSize: '13px', marginTop: '2px' }}>Please allow access to continue.</div>
+                      </div>
+                      <button onClick={requestLocation} className="btn-hover" style={{ background: '#DC2626', color: '#fff', border: 'none', padding: '8px 12px', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', fontSize: '12px' }}>
+                        Retry
                       </button>
                     </div>
                   )}
                 </div>
 
-                <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
+                {/* PREMIUM INPUT FIELDS WITH ICONS */}
+                <div className="input-group">
+                  <Store className="input-icon" size={20} />
+                  <input type="text" placeholder="Business Name" className="premium-input" value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
+                </div>
                 
-                <textarea 
-                  placeholder="Complete Shop Address (e.g., Shop No. 5, Main Market)" 
-                  style={{ ...inputStyle, resize: 'none', height: '80px', fontFamily: 'inherit' }} 
-                  value={form.shop_address} 
-                  onChange={e => setForm({...form, shop_address: e.target.value})} 
-                />
+                <div className="input-group">
+                  <MapPin className="input-icon" size={20} />
+                  <textarea placeholder="Complete Address (e.g., Shop 5, Market)" className="premium-input" style={{ resize: 'none', height: '90px', padding: '16px 16px 16px 44px' }} value={form.shop_address} onChange={e => setForm({...form, shop_address: e.target.value})} />
+                </div>
                 
-                <select style={{...inputStyle, cursor: 'pointer'}} value={form.shop_type} onChange={e => setForm({...form, shop_type: e.target.value})}>
-                  <option value="clinic">Clinic</option>
-                  <option value="barber">Barber</option>
-                  <option value="cyber cafe">Cyber Cafe</option>
-                </select>
-
-                <div style={{display: 'flex', gap: '10px'}}>
-                  <select style={{...inputStyle, flex: '0.35', padding: '16px 12px'}} value={form.document_type} onChange={e => setForm({...form, document_type: e.target.value})}>
-                    <option value="PAN">PAN</option>
-                    <option value="GSTIN">GSTIN</option>
-                    <option value="Shop License">Shop Act</option>
+                <div className="input-group">
+                  <select className="premium-input" style={{ paddingLeft: '16px', cursor: 'pointer' }} value={form.shop_type} onChange={e => setForm({...form, shop_type: e.target.value})}>
+                    <option value="clinic">Health Clinic</option>
+                    <option value="barber">Salon & Barber</option>
+                    <option value="cyber cafe">Cyber Cafe</option>
                   </select>
-                  <input type="text" placeholder="Document Number" style={{...inputStyle, flex: '0.65', textTransform: 'uppercase'}} value={form.document_number} onChange={e => setForm({...form, document_number: e.target.value})} />
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div className="input-group" style={{ flex: '0.4' }}>
+                    <select className="premium-input" style={{ paddingLeft: '16px' }} value={form.document_type} onChange={e => setForm({...form, document_type: e.target.value})}>
+                      <option value="PAN">PAN</option>
+                      <option value="GSTIN">GSTIN</option>
+                      <option value="Shop License">License</option>
+                    </select>
+                  </div>
+                  <div className="input-group" style={{ flex: '0.6' }}>
+                    <FileText className="input-icon" size={20} />
+                    <input type="text" placeholder="Document No." className="premium-input" style={{ textTransform: 'uppercase' }} value={form.document_number} onChange={e => setForm({...form, document_number: e.target.value})} />
+                  </div>
                 </div>
                 
-                <input type="tel" placeholder="10-Digit WhatsApp Number" style={inputStyle} value={form.phone} onChange={e => {
-                    const onlyNums = e.target.value.replace(/\D/g, ''); 
-                    if (onlyNums.length <= 10) setForm({...form, phone: onlyNums});
-                }}/>
+                <div className="input-group">
+                  <Phone className="input-icon" size={20} />
+                  <input type="tel" placeholder="WhatsApp Number" className="premium-input" value={form.phone} onChange={e => {
+                      const onlyNums = e.target.value.replace(/\D/g, ''); 
+                      if (onlyNums.length <= 10) setForm({...form, phone: onlyNums});
+                  }}/>
+                </div>
 
-                <button onClick={handleFormSubmit} disabled={loading} style={{ background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', color: '#fff', border: 'none', padding: '18px', borderRadius: '16px', fontWeight: '800', marginTop: '5px', cursor: 'pointer', fontSize: '16px', boxShadow: '0 8px 24px rgba(168, 100, 35, 0.25)', transition: 'transform 0.2s' }}>
-                  {loading ? 'Submitting...' : 'Submit Exact Location & Details'}
+                <button 
+                  onClick={handleFormSubmit} disabled={loading} className="btn-hover"
+                  style={{ background: '#A86423', color: '#fff', border: 'none', padding: '18px', borderRadius: '16px', fontWeight: '700', marginTop: '10px', cursor: 'pointer', fontSize: '15px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  {loading ? <Loader2 className="animate-spin" size={20} /> : <>Complete Registration <ChevronRight size={18}/></>}
                 </button>
                 
-                <span onClick={handleLogout} style={{ textAlign: 'center', color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
-                  Cancel & Use a different account
-                </span>
+                <div onClick={handleLogout} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', color: '#6B7280', fontSize: '13px', cursor: 'pointer', marginTop: '24px', fontWeight: '600' }}>
+                  <LogOut size={14} /> Use a different account
+                </div>
               </div>
             )}
 
+            {/* ================= STEP 3: PENDING (CLEAN STATE) ================= */}
             {step === 'PENDING' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
-                <div style={{ background: '#FFF4E5', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
-                  <span style={{ fontSize: '32px' }}>⏳</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', textAlign: 'center' }}>
+                <div style={{ background: '#FFF7ED', padding: '24px', borderRadius: '50%', marginBottom: '24px' }}>
+                  <Loader2 className="animate-spin" color="#F59E0B" size={48} />
                 </div>
-                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900' }}>Under Review</h2>
-                <button onClick={checkVerificationStatus} style={{ background: '#F2F2F7', color: '#1A1A2E', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', marginTop: '20px' }}>
-                  ↻ Check Status
+                <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 8px 0', fontWeight: '800' }}>Under Review</h2>
+                <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px 0', lineHeight: '1.5' }}>Your application has been submitted successfully and is currently being reviewed by our team.</p>
+                <button onClick={checkVerificationStatus} className="btn-hover" style={{ background: '#F3F4F6', color: '#111827', border: 'none', fontWeight: '700', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                  <RefreshCcw size={18} /> Check Status
                 </button>
               </div>
             )}
 
+            {/* ================= STEP 4: REJECTED ================= */}
             {step === 'REJECTED' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
-                <div style={{ background: '#FEE2E2', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
-                  <span style={{ fontSize: '32px' }}>❌</span>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', textAlign: 'center' }}>
+                <div style={{ background: '#FEE2E2', padding: '24px', borderRadius: '50%', marginBottom: '24px' }}>
+                  <AlertCircle color="#DC2626" size={48} />
                 </div>
-                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900' }}>Application Rejected</h2>
-                <button onClick={() => setStep('FORM')} style={{ background: '#1A1A2E', color: '#FFF', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', marginTop: '20px' }}>
+                <h2 style={{ color: '#111827', fontSize: '24px', margin: '0 0 8px 0', fontWeight: '800' }}>Application Rejected</h2>
+                <p style={{ color: '#6B7280', fontSize: '14px', margin: '0 0 24px 0', lineHeight: '1.5' }}>There was an issue with the details provided. Please review and update your information.</p>
+                <button onClick={() => setStep('FORM')} className="btn-hover" style={{ background: '#111827', color: '#FFF', border: 'none', fontWeight: '700', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '14px', width: '100%' }}>
                   Update Details & Re-apply
                 </button>
               </div>
