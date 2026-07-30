@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { 
   Store, CheckCircle, XCircle, Trash2, MapPin, 
-  Phone, FileText, Power, Users, Clock, LogOut 
-} from 'lucide-react';
+  Phone, FileText, Power, Users, Clock, LogOut, Search
+} from 'lucide-react'; // 🟢 Added Search icon
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/admin'; 
 
@@ -17,11 +17,13 @@ const AdminDashboard = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   
-  // 🟢 NEW: State for Tabs and Active Vendors
-  const [activeTab, setActiveTab] = useState('active'); // 'active' | 'pending'
+  const [activeTab, setActiveTab] = useState('active'); 
   const [pendingVendors, setPendingVendors] = useState([]);
   const [activeVendors, setActiveVendors] = useState([]);
   const [loading, setLoading] = useState(false);
+  
+  // 🟢 NEW: State for Search Query
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     if (token) {
@@ -57,7 +59,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // 🟢 NEW: Fetch Active/Approved Vendors
   const fetchActiveVendors = async () => {
     try {
       const res = await axios.get(`${API_URL}/active-vendors`, {
@@ -76,6 +77,7 @@ const AdminDashboard = () => {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchPendingVendors(); 
+      fetchActiveVendors(); // 🟢 Fixed: Ensures active list is updated in background
     } catch (error) {
       alert('Error occurred during approval');
     }
@@ -93,7 +95,6 @@ const AdminDashboard = () => {
     }
   };
 
-  // 🟢 God Mode: Hard Delete
   const handleDelete = async (vendorId, shopName) => {
     if (!window.confirm(`🚨 WARNING: Are you sure you want to PERMANENTLY DELETE ${shopName}? This deletes all their queues and data!`)) return;
     try {
@@ -111,6 +112,17 @@ const AdminDashboard = () => {
     setToken('');
     localStorage.removeItem('adminToken');
   };
+
+  // 🟢 NEW: Logic to filter vendors based on search query (QR ID, Name, or Phone)
+  const filteredActiveVendors = activeVendors.filter(vendor => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      (vendor.shop_name && vendor.shop_name.toLowerCase().includes(query)) ||
+      (vendor.qr_id && vendor.qr_id.toLowerCase().includes(query)) ||
+      (vendor.phone && vendor.phone.includes(query))
+    );
+  });
 
   // ==============================
   // UI - 1: LOGIN SCREEN
@@ -210,6 +222,24 @@ const AdminDashboard = () => {
                ================================== */}
             {activeTab === 'active' && (
               <div style={{ overflowX: 'auto' }}>
+                
+                {/* 🟢 SEARCH BAR UI */}
+                <div style={{ padding: '16px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', gap: '16px', alignItems: 'center', background: '#F8FAFC' }}>
+                  <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+                    <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input 
+                      type="text" 
+                      placeholder="Search by QR ID, Shop Name, or Phone..." 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      style={{ width: '100%', padding: '12px 12px 12px 40px', borderRadius: '12px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>
+                    Showing {filteredActiveVendors.length} vendors
+                  </div>
+                </div>
+
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                     <tr style={{ textAlign: 'left', color: '#64748B', fontSize: '13px', textTransform: 'uppercase' }}>
@@ -220,17 +250,17 @@ const AdminDashboard = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {activeVendors.length === 0 ? (
-                      <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>No active vendors found.</td></tr>
+                    {filteredActiveVendors.length === 0 ? (
+                      <tr><td colSpan="4" style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>No active vendors found matching your search.</td></tr>
                     ) : (
-                      activeVendors.map((vendor) => (
+                      filteredActiveVendors.map((vendor) => (
                         <tr key={vendor._id} style={{ borderBottom: '1px solid #F1F5F9' }}>
                           <td style={{ padding: '16px 24px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               {vendor.is_open ? <div className="pulse-dot"></div> : <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#CBD5E1' }}></div>}
                               <div>
                                 <div style={{ fontWeight: '800', color: '#0F172A', fontSize: '15px' }}>{vendor.shop_name}</div>
-                                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>QR ID: <span style={{fontWeight: '700'}}>{vendor.qr_id}</span></div>
+                                <div style={{ fontSize: '12px', color: '#64748B', marginTop: '4px' }}>QR ID: <span style={{fontWeight: '700'}}>{vendor.qr_id || 'Generating...'}</span></div>
                               </div>
                             </div>
                           </td>
