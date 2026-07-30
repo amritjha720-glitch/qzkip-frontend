@@ -8,7 +8,34 @@ import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 
+// 🟢 NEW: Leaflet Map Imports for Exact Pinpoint Location
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+
+// 🟢 FIX: Accessing Environment Variable (Works for both Vite and CRA)
+// Agar aap Ola Maps ya koi paid Map service use karte, toh API Key yahan se aati
+const MAP_API_KEY = import.meta.env?.VITE_OLA_MAPS_API_KEY || process.env.REACT_APP_OLA_MAPS_API_KEY || 'MISSING_API_KEY';
+
+// 🟢 FIX: Leaflet default marker icons in React
+const customIcon = new L.Icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
+
+// 🟢 NEW: Map Click Component (Allows user to move the pin exactly)
+const LocationPicker = ({ coords, setCoords }) => {
+  useMapEvents({
+    click(e) {
+      setCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+    }
+  });
+  return coords ? <Marker position={[coords.lat, coords.lng]} icon={customIcon} /> : null;
+};
 
 const AuthScreen = () => {
   const navigate = useNavigate();
@@ -25,11 +52,14 @@ const AuthScreen = () => {
   const [form, setForm] = useState({ 
     phone: '', 
     shop_name: '', 
-    shop_address: '', // 🟢 Exact Manual Address
+    shop_address: '', // 🟢 Manual Address Field
     document_type: 'PAN',
     document_number: '',
     shop_type: 'clinic' 
   });
+
+  const [locationStatus, setLocationStatus] = useState('idle'); 
+  const [coords, setCoords] = useState(null);
 
   const config = { withCredentials: true };
 
@@ -37,9 +67,40 @@ const AuthScreen = () => {
     if (localStorage.getItem('vendorToken')) navigate('/dashboard');
   }, [navigate]);
 
-  // ==========================================
-  // 1. GOOGLE LOGIN HANDLER 
-  // ==========================================
+  const requestLocation = () => {
+    setLocationStatus('locating');
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          setLocationStatus('found');
+        },
+        (err) => {
+          console.error("Location access denied by vendor:", err);
+          setLocationStatus('denied');
+          if (err.code === err.PERMISSION_DENIED) {
+            setPopup({ 
+              isOpen: true, 
+              title: 'Location Disabled', 
+              message: 'Please allow location so customers can navigate to your shop via Google Maps.', 
+              type: 'alert', 
+              confirmText: 'Got It' 
+            });
+          }
+        },
+        { enableHighAccuracy: true, timeout: 6000 }
+      );
+    } else {
+      setLocationStatus('denied');
+    }
+  };
+
+  useEffect(() => {
+    if (step === 'FORM') {
+      requestLocation();
+    }
+  }, [step]);
+
   const handleGoogleLogin = async (forceSelect = false) => {
     setLoading(true);
     try {
@@ -90,39 +151,22 @@ const AuthScreen = () => {
     }
   };
 
-  // ==========================================
-  // 🟢 NAYA MAGIC: Address to Coordinates (Geocoding API)
-  // ==========================================
-  const getCoordinatesFromAddress = async (address) => {
-    try {
-      // 100% Free OpenStreetMap Geocoding API
-      const response = await axios.get(`https://nominatim.openstreetmap.org/search`, {
-        params: { q: address, format: 'json', limit: 1 }
-      });
-
-      if (response.data && response.data.length > 0) {
-        return {
-          lat: parseFloat(response.data[0].lat),
-          lng: parseFloat(response.data[0].lon) // Nominatim returns 'lon' instead of 'lng'
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error("Geocoding Error:", error);
-      return null;
-    }
-  };
-
-  // ==========================================
-  // 2. KYC FORM SUBMIT HANDLER
-  // ==========================================
   const handleFormSubmit = async () => {
-    // Basic Form Validation
-    if (form.phone.length !== 10 || !form.shop_name || !form.document_number || form.shop_address.trim().length < 15) {
+    if (form.phone.length !== 10 || !form.shop_name || !form.document_number || form.shop_address.trim().length < 10) {
       return setPopup({ 
         isOpen: true, 
         title: 'Missing Fields', 
-        message: 'Please fill out all fields. Make sure to write a detailed shop address (Min 15 chars, include City & Pincode).', 
+        message: 'Please fill out all fields correctly. Ensure the shop address is complete.', 
+        type: 'alert', 
+        confirmText: 'OK' 
+      });
+    }
+
+    if (!coords) {
+      return setPopup({ 
+        isOpen: true, 
+        title: 'Location Missing', 
+        message: 'Please allow GPS access and pin your exact location on the map before submitting.', 
         type: 'alert', 
         confirmText: 'OK' 
       });
@@ -130,29 +174,12 @@ const AuthScreen = () => {
     
     setLoading(true);
     try {
-      // 📍 STEP A: Convert Typed Address to GPS Coordinates automatically
-      const coords = await getCoordinatesFromAddress(form.shop_address);
-
-      if (!coords) {
-        setLoading(false);
-        return setPopup({ 
-          isOpen: true, 
-          title: 'Address Not Found', 
-          message: 'We could not pinpoint this address on the map. Please add your City, State, and Pincode accurately.', 
-          type: 'alert', 
-          confirmText: 'Got It' 
-        });
+      const payload = { ...googleData, ...form };
+      if (coords) {
+        payload.lat = coords.lat;
+        payload.lng = coords.lng;
       }
 
-      // 📍 STEP B: Add coordinates to the payload
-      const payload = { 
-        ...googleData, 
-        ...form,
-        lat: coords.lat,
-        lng: coords.lng
-      };
-
-      // 📍 STEP C: Submit to Backend
       const res = await axios.post(`${API_URL}/complete-profile`, payload, config);
       
       if (res.data.action === 'SHOW_PENDING') {
@@ -227,6 +254,8 @@ const AuthScreen = () => {
         
         <Helmet>
           <title>Vendor Portal | Qzkip</title>
+          {/* 🟢 Leaflet CSS is strictly required for the map to display correctly */}
+          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         </Helmet>
 
         <CustomPopup config={popup} setConfig={setPopup} /> 
@@ -281,25 +310,50 @@ const AuthScreen = () => {
             {/* ================= STEP 2: KYC FORM ================= */}
             {step === 'FORM' && (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={{ textAlign: 'center', marginBottom: '25px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                   <h2 style={{ margin: '0 0 5px 0', color: '#1A1A2E', fontSize: '24px', fontWeight: '900', letterSpacing: '-0.5px' }}>Complete Profile</h2>
                   <p style={{ margin: 0, color: '#8E8E93', fontSize: '13px', fontWeight: '500' }}>Setup your shop details to get started</p>
                 </div>
                 
+                {locationStatus === 'locating' && (
+                  <div style={{ marginBottom: '15px', padding: '12px', borderRadius: '12px', background: '#FFF4E5', border: '1px solid #FFD8A8', textAlign: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#B45309', fontWeight: '700' }}>⏳ Detecting your GPS location...</span>
+                  </div>
+                )}
+                
+                {locationStatus === 'denied' && (
+                  <div onClick={requestLocation} style={{ marginBottom: '15px', padding: '12px', borderRadius: '12px', background: '#FEF2F2', border: '1px solid #FECACA', textAlign: 'center', cursor: 'pointer' }}>
+                    <span style={{ fontSize: '12px', color: '#B91C1C', fontWeight: '700' }}>📍 GPS denied. <span style={{textDecoration: 'underline'}}>Tap to retry</span></span>
+                  </div>
+                )}
+
+                {/* 🟢 NEW: Exact Pin Point Map (Zomato/Swiggy Style) */}
+                {coords && (
+                  <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
+                    <div style={{ padding: '10px 12px', background: '#FDF8F2', fontSize: '12px', fontWeight: '800', color: '#A86423', textAlign: 'center', borderBottom: '1px solid #F0D9C1' }}>
+                      📍 Tap on the map to set EXACT shop pin
+                    </div>
+                    {/* The Map itself */}
+                    <MapContainer 
+                      center={[coords.lat, coords.lng]} 
+                      zoom={17} 
+                      style={{ height: '220px', width: '100%', zIndex: 0 }}
+                    >
+                      {/* Agar aap future mein Ola Maps tile layer use karna chahte hain, toh yahan MAP_API_KEY aayegi */}
+                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                      <LocationPicker coords={coords} setCoords={setCoords} />
+                    </MapContainer>
+                  </div>
+                )}
+
                 <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
                 
-                {/* 🟢 Clean Address Field with UI Helpers */}
-                <div style={{ marginBottom: '16px' }}>
-                  <textarea 
-                    placeholder="Complete Shop Address (e.g., Shop No. 5, Main Market, Indore, 452001)" 
-                    style={{ ...inputStyle, resize: 'none', height: '80px', fontFamily: 'inherit', marginBottom: '6px' }} 
-                    value={form.shop_address} 
-                    onChange={e => setForm({...form, shop_address: e.target.value})} 
-                  />
-                  <p style={{ margin: '0 4px', fontSize: '11px', color: '#8E8E93', fontWeight: '600' }}>
-                    * Include your City and Pincode. Our system will automatically fetch your GPS location for the map.
-                  </p>
-                </div>
+                <textarea 
+                  placeholder="Complete Shop Address (e.g., Shop No. 5, Main Market)" 
+                  style={{ ...inputStyle, resize: 'none', height: '80px', fontFamily: 'inherit' }} 
+                  value={form.shop_address} 
+                  onChange={e => setForm({...form, shop_address: e.target.value})} 
+                />
                 
                 <select style={{...inputStyle, cursor: 'pointer'}} value={form.shop_type} onChange={e => setForm({...form, shop_type: e.target.value})}>
                   <option value="clinic">Clinic</option>
@@ -321,9 +375,8 @@ const AuthScreen = () => {
                     if (onlyNums.length <= 10) setForm({...form, phone: onlyNums});
                 }}/>
 
-                {/* 🟢 Dynamic Submit Button Text */}
-                <button onClick={handleFormSubmit} disabled={loading} style={{ background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', color: '#fff', border: 'none', padding: '18px', borderRadius: '16px', fontWeight: '800', marginTop: '10px', cursor: 'pointer', fontSize: '16px', boxShadow: '0 8px 24px rgba(168, 100, 35, 0.25)', transition: 'transform 0.2s' }}>
-                  {loading ? 'Finding Location & Submitting...' : 'Submit Details'}
+                <button onClick={handleFormSubmit} disabled={loading} style={{ background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', color: '#fff', border: 'none', padding: '18px', borderRadius: '16px', fontWeight: '800', marginTop: '5px', cursor: 'pointer', fontSize: '16px', boxShadow: '0 8px 24px rgba(168, 100, 35, 0.25)', transition: 'transform 0.2s' }}>
+                  {loading ? 'Submitting...' : 'Submit Exact Location & Details'}
                 </button>
                 
                 <span onClick={handleLogout} style={{ textAlign: 'center', color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
@@ -332,72 +385,31 @@ const AuthScreen = () => {
               </div>
             )}
 
-            {/* ================= STEP 3: PENDING SCREEN ================= */}
             {step === 'PENDING' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
-                <div style={{ background: '#FFF4E5', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px', boxShadow: '0 8px 20px rgba(255, 149, 0, 0.15)' }}>
+                <div style={{ background: '#FFF4E5', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
                   <span style={{ fontSize: '32px' }}>⏳</span>
                 </div>
-                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900', letterSpacing: '-0.5px' }}>Under Review</h2>
-                <p style={{ color: '#8E8E93', fontSize: '15px', textAlign: 'center', lineHeight: '1.5', margin: '0 0 20px 0', fontWeight: '500' }}>
-                  Your documents and address are being verified. Once approved, you will be able to start your queue.
-                </p>
-
-                <div style={{ background: '#F2F2F7', padding: '8px 16px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>
-                  <div style={{ width: '8px', height: '8px', background: '#FF9500', borderRadius: '50%', boxShadow: '0 0 5px rgba(255, 149, 0, 0.6)' }}></div>
-                  <span style={{ fontSize: '12px', color: '#8E8E93', fontWeight: '600' }}>Logged in as <b style={{color: '#1A1A2E'}}>{googleData.email}</b></span>
-                </div>
-                
-                <button onClick={checkVerificationStatus} disabled={loading} style={{ background: '#F2F2F7', color: '#1A1A2E', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', transition: 'background 0.2s' }}>
-                  {loading ? 'Checking...' : '↻ Check Status'}
+                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900' }}>Under Review</h2>
+                <button onClick={checkVerificationStatus} style={{ background: '#F2F2F7', color: '#1A1A2E', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', marginTop: '20px' }}>
+                  ↻ Check Status
                 </button>
-
-                <span onClick={handleLogout} style={{ color: '#A86423', fontSize: '13px', cursor: 'pointer', marginTop: '20px', fontWeight: '700' }}>
-                  Use a different account
-                </span>
               </div>
             )}
 
-           {/* ================= STEP 4: REJECTED SCREEN 🔴 ================= */}
             {step === 'REJECTED' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '10px 0' }}>
-                <div style={{ background: '#FEE2E2', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px', boxShadow: '0 8px 20px rgba(220, 38, 38, 0.15)' }}>
+                <div style={{ background: '#FEE2E2', padding: '16px 40px', borderRadius: '24px', display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '20px' }}>
                   <span style={{ fontSize: '32px' }}>❌</span>
                 </div>
-                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900', letterSpacing: '-0.5px' }}>Application Rejected</h2>
-                <p style={{ color: '#8E8E93', fontSize: '15px', textAlign: 'center', lineHeight: '1.5', margin: '0 0 20px 0', fontWeight: '500' }}>
-                  We're sorry, but your vendor application has been declined. You can update your details and re-apply.
-                </p>
-                
-                <div style={{ background: '#F2F2F7', padding: '8px 16px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '8px', marginBottom: '25px' }}>
-                  <div style={{ width: '8px', height: '8px', background: '#DC2626', borderRadius: '50%', boxShadow: '0 0 5px rgba(220, 38, 38, 0.6)' }}></div>
-                  <span style={{ fontSize: '12px', color: '#8E8E93', fontWeight: '600' }}>Logged in as <b style={{color: '#1A1A2E'}}>{googleData.email}</b></span>
-                </div>
-
-                <button 
-                  onClick={() => setStep('FORM')} 
-                  style={{ background: '#1A1A2E', color: '#FFF', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', transition: 'background 0.2s', marginTop: '10px' }}
-                >
+                <h2 style={{ color: '#1A1A2E', fontSize: '24px', margin: '0 0 10px 0', fontWeight: '900' }}>Application Rejected</h2>
+                <button onClick={() => setStep('FORM')} style={{ background: '#1A1A2E', color: '#FFF', border: 'none', fontWeight: '800', cursor: 'pointer', padding: '16px 24px', borderRadius: '16px', fontSize: '15px', width: '100%', marginTop: '20px' }}>
                   Update Details & Re-apply
-                </button>
-
-                <button 
-                  onClick={handleLogout} 
-                  style={{ background: 'transparent', color: '#DC2626', border: '1px solid #DC2626', fontWeight: '800', cursor: 'pointer', padding: '14px 24px', borderRadius: '16px', fontSize: '14px', width: '100%', marginTop: '15px' }}
-                >
-                  Use a different account
                 </button>
               </div>
             )}
 
           </div>
-          
-          <p style={{textAlign:'center', marginTop:'30px'}}>
-            <span style={{color: '#8E8E93', cursor:'pointer', fontSize:'14px', fontWeight: '700', padding: '10px'}} onClick={() => navigate('/')}>
-              ← Back to Customer App
-            </span>
-          </p>
-          
         </div>
       </div>
     </HelmetProvider>
