@@ -1,5 +1,5 @@
 /* eslint-disable */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import CustomPopup from "../components/CustomPopup";
 import { auth, googleProvider } from '../firebase';
@@ -8,35 +8,87 @@ import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 
-// 🟢 NEW: Leaflet Map Imports for Exact Pinpoint Location
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-
-// 🟢 FIX: Accessing Environment Variable (Works for both Vite and CRA)
-// Agar aap Ola Maps ya koi paid Map service use karte, toh API Key yahan se aati
-const MAP_API_KEY = import.meta.env?.VITE_OLA_MAPS_API_KEY || process.env.REACT_APP_OLA_MAPS_API_KEY || 'MISSING_API_KEY';
-
-// 🟢 FIX: Leaflet default marker icons in React
-const customIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41]
-});
-
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
-// 🟢 NEW: Map Click Component (Allows user to move the pin exactly)
-const LocationPicker = ({ coords, setCoords }) => {
-  useMapEvents({
-    click(e) {
-      setCoords({ lat: e.latlng.lat, lng: e.latlng.lng });
+// 🟢 NEW: Securely Fetching Ola Maps API Key from .env
+const MAP_API_KEY = import.meta.env?.VITE_OLA_MAPS_API_KEY || process.env.REACT_APP_OLA_MAPS_API_KEY || 'MISSING_API_KEY';
+
+// ==========================================
+// 📍 🟢 OLA MAPS COMPONENT (Zomato Style UX)
+// ==========================================
+const OlaMapPicker = ({ coords, setCoords }) => {
+  const mapRef = useRef(null);
+  const isMapInitialized = useRef(false);
+
+  useEffect(() => {
+    // Agar coords nahi aaye ya map pehle hi ban chuka hai, toh rok do
+    if (!coords || isMapInitialized.current) return;
+
+    const initOlaMap = () => {
+      isMapInitialized.current = true;
+      const olaMaps = new window.OlaMaps({ apiKey: MAP_API_KEY });
+      
+      const map = olaMaps.init({
+        style: "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json",
+        container: mapRef.current,
+        center: [coords.lng, coords.lat], // Note: Ola/Mapbox takes [Lng, Lat]
+        zoom: 16,
+      });
+
+      // 🟢 MAGICAL UX: Jaise-jaise map move hoga, coordinates update hote rahenge
+      map.on('move', () => {
+        const center = map.getCenter();
+        setCoords({ lat: center.lat, lng: center.lng });
+      });
+    };
+
+    // 🟢 DYNAMIC INJECTION: Bina kisi npm install ke official Ola SDK load karna
+    if (!window.OlaMaps) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.olamaps.io/ib-web-sdk/ola-maps-web-sdk.min.css';
+      document.head.appendChild(link);
+
+      const script = document.createElement('script');
+      script.src = 'https://cdn.olamaps.io/ib-web-sdk/ola-maps-web-sdk.umd.js';
+      script.onload = initOlaMap;
+      document.head.appendChild(script);
+    } else {
+      initOlaMap();
     }
-  });
-  return coords ? <Marker position={[coords.lat, coords.lng]} icon={customIcon} /> : null;
+  }, [coords, setCoords]);
+
+  return (
+    <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
+      <div style={{ padding: '8px 12px', background: '#FDF8F2', fontSize: '11px', fontWeight: '800', color: '#A86423', textAlign: 'center', borderBottom: '1px solid #F0D9C1', display: 'flex', flexDirection: 'column' }}>
+        <span>📍 Drag the map to place the pin on your exact shop</span>
+        <span style={{color: '#8E8E93', fontSize: '10px', marginTop: '2px'}}>
+          Live Updates: Lat {coords?.lat.toFixed(4)}, Lng {coords?.lng.toFixed(4)}
+        </span>
+      </div>
+      
+      {/* Container for Map */}
+      <div style={{ position: 'relative', width: '100%', height: '220px' }}>
+        <div ref={mapRef} style={{ width: '100%', height: '100%' }} />
+        
+        {/* 🟢 ZOMATO STYLE CENTER PIN (Fixed Position) */}
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%',
+          transform: 'translate(-50%, -100%)', zIndex: 10,
+          fontSize: '32px', pointerEvents: 'none',
+          textShadow: '0 4px 10px rgba(0,0,0,0.3)',
+          animation: 'bounce 2s infinite'
+        }}>
+          📍
+        </div>
+      </div>
+    </div>
+  );
 };
 
+// ==========================================
+// AUTH SCREEN COMPONENT
+// ==========================================
 const AuthScreen = () => {
   const navigate = useNavigate();
   
@@ -52,7 +104,7 @@ const AuthScreen = () => {
   const [form, setForm] = useState({ 
     phone: '', 
     shop_name: '', 
-    shop_address: '', // 🟢 Manual Address Field
+    shop_address: '',
     document_type: 'PAN',
     document_number: '',
     shop_type: 'clinic' 
@@ -254,8 +306,6 @@ const AuthScreen = () => {
         
         <Helmet>
           <title>Vendor Portal | Qzkip</title>
-          {/* 🟢 Leaflet CSS is strictly required for the map to display correctly */}
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
         </Helmet>
 
         <CustomPopup config={popup} setConfig={setPopup} /> 
@@ -327,24 +377,8 @@ const AuthScreen = () => {
                   </div>
                 )}
 
-                {/* 🟢 NEW: Exact Pin Point Map (Zomato/Swiggy Style) */}
-                {coords && (
-                  <div style={{ marginBottom: '20px', borderRadius: '16px', overflow: 'hidden', border: '2px solid #A86423', boxShadow: '0 4px 12px rgba(168, 100, 35, 0.15)' }}>
-                    <div style={{ padding: '10px 12px', background: '#FDF8F2', fontSize: '12px', fontWeight: '800', color: '#A86423', textAlign: 'center', borderBottom: '1px solid #F0D9C1' }}>
-                      📍 Tap on the map to set EXACT shop pin
-                    </div>
-                    {/* The Map itself */}
-                    <MapContainer 
-                      center={[coords.lat, coords.lng]} 
-                      zoom={17} 
-                      style={{ height: '220px', width: '100%', zIndex: 0 }}
-                    >
-                      {/* Agar aap future mein Ola Maps tile layer use karna chahte hain, toh yahan MAP_API_KEY aayegi */}
-                      <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                      <LocationPicker coords={coords} setCoords={setCoords} />
-                    </MapContainer>
-                  </div>
-                )}
+                {/* 🟢 OLA MAPS RENDER BLOCK */}
+                {coords && <OlaMapPicker coords={coords} setCoords={setCoords} />}
 
                 <input type="text" placeholder="Shop Name" style={inputStyle} value={form.shop_name} onChange={e => setForm({...form, shop_name: e.target.value})} />
                 
