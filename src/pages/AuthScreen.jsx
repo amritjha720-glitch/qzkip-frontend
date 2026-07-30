@@ -7,13 +7,12 @@ import { signInWithPopup, signOut } from 'firebase/auth';
 import SmartLogo from '../components/SmartLogo';
 import axios from 'axios';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
-// 🟢 NEW: Premium Icons imported for a "Real App" feel
 import { MapPin, Store, FileText, Phone, CheckCircle2, AlertCircle, Loader2, RefreshCcw, LogOut, ChevronRight } from 'lucide-react';
 
 const API_URL = 'https://qzkip-backend.onrender.com/api/auth'; 
 
 // ==========================================
-// AUTH SCREEN COMPONENT (PREMIUM APP UI)
+// AUTH SCREEN COMPONENT (PREMIUM UI + GOLDEN HEADER)
 // ==========================================
 const AuthScreen = () => {
   const navigate = useNavigate();
@@ -205,7 +204,6 @@ const AuthScreen = () => {
       <div style={{ minHeight: '100vh', background: '#F4F5F7', display: 'flex', flexDirection: 'column', fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
         <Helmet>
           <title>Partner Portal | Qzkip</title>
-          {/* 🟢 CSS Injected for Premium Animations and Focus States */}
           <style>{`
             .premium-input {
               width: 100%; padding: 16px 16px 16px 44px; border-radius: 12px;
@@ -232,17 +230,21 @@ const AuthScreen = () => {
 
         <CustomPopup config={popup} setConfig={setPopup} /> 
 
-        {/* TOP NAVBAR */}
+        {/* 🟢 TOP NAVBAR - GOLDEN THEME RESTORED */}
         <div style={{ 
-          width: '100%', background: '#ffffff', 
-          padding: '16px 24px', borderBottom: '1px solid #E5E7EB', boxSizing: 'border-box',
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50
+          width: '100%', background: 'linear-gradient(135deg, #A86423 0%, #754B1A 100%)', 
+          padding: '20px 24px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', boxSizing: 'border-box',
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          position: 'sticky', top: 0, zIndex: 50
         }}>
-          <div onClick={() => navigate('/')} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <div style={{background: '#A86423', borderRadius: '8px', padding: '6px'}}><SmartLogo size={22} color="#fff" /></div>
-            <h1 style={{margin: 0, fontSize: '20px', color: '#111827', fontWeight: '800', letterSpacing: '-0.5px'}}>Qzkip</h1>
+          <div 
+            onClick={() => navigate('/')} 
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}
+          >
+            <SmartLogo size={30} />
+            <h1 style={{margin: 0, fontSize: '22px', color: '#ffffff', fontWeight: '800', letterSpacing: '-0.5px'}}>Qzkip</h1>
           </div>
-          <span style={{ background: '#FEF3C7', color: '#92400E', padding: '6px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: '700' }}>Partner Portal</span>
+          <span style={{ background: 'rgba(255,255,255,0.15)', color: '#F9F3EA', padding: '6px 12px', borderRadius: '10px', fontSize: '13px', fontWeight: '700' }}>Vendor Portal</span>
         </div>
         
         {/* MAIN CONTENT CONTAINER */}
@@ -312,8 +314,8 @@ const AuthScreen = () => {
                       </div>
                       <div>
                         <div style={{ color: '#166534', fontWeight: '700', fontSize: '15px' }}>Location Secured</div>
-                        {/* 🟢 Removed Lat/Lng completely. Just a clean user-friendly message. */}
-                        <div style={{ color: '#15803D', fontSize: '13px', marginTop: '2px' }}>We've pinpointed your shop on the map.</div>
+                        {/* 🟢 Clean user-friendly message, no Lat/Lng */}
+                        <div style={{ color: '#15803D', fontSize: '13px', marginTop: '2px' }}>We've successfully verified your shop's position.</div>
                       </div>
                     </div>
                   )}
@@ -388,7 +390,7 @@ const AuthScreen = () => {
               </div>
             )}
 
-            {/* ================= STEP 3: PENDING (CLEAN STATE) ================= */}
+            {/* ================= STEP 3: PENDING ================= */}
             {step === 'PENDING' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 0', textAlign: 'center' }}>
                 <div style={{ background: '#FFF7ED', padding: '24px', borderRadius: '50%', marginBottom: '24px' }}>
